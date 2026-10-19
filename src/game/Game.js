@@ -8,6 +8,8 @@ import { UI } from '../ui/UI.js';
 import { Helpers } from './Helpers.js';
 import { AirSupport } from './AirSupport.js';
 import { Wildlife } from './Wildlife.js';
+import { Atmosphere } from './Atmosphere.js';
+import { DamageFeedback } from '../ui/DamageFeedback.js';
 import { MAX_HEALTH, HIRE_COST, MUNICIPAL_COST, STATE_COST, MAX_HELPERS, exposureAt, isEncircled, advanceSurvival, extinguishReward, canBuy } from './SurvivalLogic.js';
 
 const MOVE_SPEED = 8.5;
@@ -19,19 +21,19 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.25;
+    this.renderer.toneMappingExposure = .97;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x9fc19c);
-    this.scene.fog = new THREE.Fog(0x9fc19c, 37, 94);
-    this.scene.add(new THREE.HemisphereLight(0xe2f7ea, 0x345c35, 2.15));
-    const sun = new THREE.DirectionalLight(0xffebc0, 2.1);
+    this.scene.background = new THREE.Color(0x504940);
+    this.scene.fog = new THREE.FogExp2(0x504940, .035);
+    this.scene.add(new THREE.HemisphereLight(0xb9b6a0, 0x1c2920, 1.55));
+    const sun = new THREE.DirectionalLight(0xf1ad7c, 1.05);
     sun.position.set(-14, 27, 10);
     this.scene.add(sun);
     this.camera = new THREE.PerspectiveCamera(48, 1, .1, 150);
-    this.camera.position.set(0, 23, 32);
+    this.camera.position.set(0, 31, 39);
     this.camera.lookAt(0, 1, 6);
-    this.cameraOffset = new THREE.Vector3(0, 20, 22);
+    this.cameraOffset = new THREE.Vector3(0, 28, 29);
     this.raycaster = new THREE.Raycaster();
     this.tempTarget = new THREE.Vector3();
     this.tempNozzle = new THREE.Vector3();
@@ -42,6 +44,8 @@ export class Game {
     this.helpers = new Helpers(this.scene);
     this.support = new AirSupport(this.scene);
     this.wildlife = new Wildlife(this.scene);
+    this.atmosphere = new Atmosphere(this.scene);
+    this.damageFeedback = new DamageFeedback(document.getElementById('damage-flash'));
     this.input = new Input(canvas, () => this.togglePause());
     this.ui = new UI({ selectDesktop: () => this.chooseDesktop(), selectMobile: () => this.chooseMobile(), backToDevice: () => this.chooseDevice(), start: () => this.start(), pause: () => this.togglePause(), resume: () => this.resume(), restart: () => this.start(), hire: () => this.purchase('hire'), municipal: () => this.purchase('municipal'), state: () => this.purchase('state') });
     this.mode = 'device';
@@ -96,6 +100,9 @@ export class Game {
     this.helpers.reset();
     this.support.reset();
     this.wildlife.reset();
+    this.atmosphere.reset();
+    this.damageFeedback.reset();
+    this.world.refreshCanopies(this.player.position, true);
     this.ui.reset();
     this.ui.setState('playing');
     this.refreshHUD();
@@ -193,6 +200,7 @@ export class Game {
       else if (moving) this.player.face(this.player.position.x + move.x, this.player.position.z + move.z);
     } else this.aimAtPointer();
     this.player.update(dt, moving);
+    this.world.refreshCanopies(this.player.position);
     this.tempTarget.copy(this.player.position).add(this.cameraOffset);
     this.camera.position.lerp(this.tempTarget, 1 - Math.exp(-4.3 * dt));
     this.camera.lookAt(this.player.position.x, 1.1, this.player.position.z - 1.5);
@@ -212,7 +220,9 @@ export class Game {
     if (newlyLost) this.ui.notify(`${newlyLost} animal(is) não resistiu(ram) à fumaça ou ao fogo.`);
     const exposure = exposureAt(this.fires.fires, this.player.position);
     const surrounded = isEncircled(this.fires.fires, this.player.position);
+    const oldHealth = this.healthState.health;
     this.healthState = advanceSurvival(this.healthState, exposure, dt, surrounded);
+    this.damageFeedback.hit(oldHealth - this.healthState.health, exposure.directFire || surrounded);
     if (surrounded && this.healthState.health > 0 && this.elapsed % 4 < dt) this.ui.notify('Você está cercado pelo fogo! Fuja!');
     if (this.healthState.health <= 0) { this.finish('lost'); return; }
     this.hudClock += dt;
@@ -226,8 +236,10 @@ export class Game {
     if (this.mode === 'playing') this.update(dt);
     if (this.mode !== 'paused') {
       this.fires.update(dt, this.elapsed);
+      this.atmosphere.update(dt, this.fires, this.player.position);
       if (this.mode !== 'playing') this.water.update(dt, false, this.player.position, this.player.forward);
     }
+    this.damageFeedback.update(dt);
     this.renderer.render(this.scene, this.camera);
     requestAnimationFrame(next => this.frame(next));
   }

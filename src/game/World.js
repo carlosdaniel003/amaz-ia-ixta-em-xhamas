@@ -36,7 +36,7 @@ export class World {
     const rng = randomGenerator(8531);
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(115, 115),
-      new THREE.MeshLambertMaterial({ color: 0x56865a }),
+      new THREE.MeshLambertMaterial({ color: 0x293b2b }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.07;
@@ -45,8 +45,8 @@ export class World {
     // Keep scenery procedural and batched: a handful of draw calls, even with hundreds of props.
     const patches = new THREE.InstancedMesh(
       new THREE.CircleGeometry(1, 9),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, depthWrite: false }),
-      95,
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false }),
+      265,
     );
     for (let i = 0; i < patches.count; i++) {
       const x = (rng() - 0.5) * 105;
@@ -56,26 +56,26 @@ export class World {
       dummy.scale.set(1.1 + rng() * 4, 0.8 + rng() * 3, 1);
       dummy.updateMatrix();
       patches.setMatrixAt(i, dummy.matrix);
-      patches.setColorAt(i, new THREE.Color().setHSL(0.18 + rng() * 0.19, 0.42, 0.17 + rng() * 0.35));
+      patches.setColorAt(i, new THREE.Color().setHSL(0.11 + rng() * .18, .31, .11 + rng() * .15));
     }
     patches.instanceMatrix.needsUpdate = true;
     this.group.add(patches);
 
     const trees = [];
     let attempts = 0;
-    while (trees.length < 126 && attempts++ < 2500) {
+    while (trees.length < 205 && attempts++ < 6500) {
       const x = (rng() - 0.5) * 103;
       const z = (rng() - 0.5) * 103;
-      if (Math.hypot(x, z - 10) < 7.5 || Math.hypot(x, z) < 6) continue;
-      if (FIRE_POSITIONS.some(([fx, fz]) => Math.hypot(x - fx, z - fz) < 3.6)) continue;
-      if (trees.some((tree) => Math.hypot(x - tree.x, z - tree.z) < 2.6)) continue;
-      trees.push({ x, z, height: 3 + rng() * 3.6, width: 1.5 + rng() * 1.6, seed: rng() });
-      this.obstacles.push({ x, z, radius: 0.75 });
+      if (Math.hypot(x, z - 10) < 4.2) continue;
+      if (FIRE_POSITIONS.some(([fx, fz]) => Math.hypot(x - fx, z - fz) < 2.45)) continue;
+      if (trees.some((tree) => Math.hypot(x - tree.x, z - tree.z) < 2.25)) continue;
+      trees.push({ x, z, height: 12 + rng() * 15, width: 2.8 + rng() * 1.9, seed: rng() });
+      this.obstacles.push({ x, z, radius: 0.72 });
     }
 
     const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.42, 0.62, 1, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }), trees.length);
     const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), trees.length * 2);
-    const shadows = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 10), new THREE.MeshBasicMaterial({ color: 0x123e2a, transparent: true, opacity: 0.15, depthWrite: false }), trees.length);
+    const shadows = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 10), new THREE.MeshBasicMaterial({ color: 0x101b16, transparent: true, opacity: 0.26, depthWrite: false }), trees.length);
     trees.forEach((tree, i) => {
       instance(trunk, i, tree.x, tree.height * .35, tree.z, .73, tree.height * .7, .73, tree.seed * 5);
       instance(crown, i * 2, tree.x, tree.height * .77, tree.z, tree.width, tree.height * .36, tree.width, tree.seed * 4);
@@ -90,23 +90,61 @@ export class World {
       crown.setColorAt(i * 2, color);
       crown.setColorAt(i * 2 + 1, color.clone().multiplyScalar(1.08));
     });
+
+    crown.frustumCulled = false;
+    crown.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.crown = crown;
+    this.trees = trees;
+    this.refreshCanopies({ x: 0, z: 10 }, true);
     for (const mesh of [trunk, crown, shadows]) {
       mesh.instanceMatrix.needsUpdate = true;
       mesh.computeBoundingSphere();
       this.group.add(mesh);
     }
 
-    const shrubs = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 250);
+    const shrubs = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 430);
     for (let i = 0; i < shrubs.count; i++) {
       const x = (rng() - .5) * 105;
       const z = (rng() - .5) * 105;
       const size = .25 + rng() * .62;
       instance(shrubs, i, x, size * .50, z, size * 1.5, size, size * 1.1, rng() * 6);
-      shrubs.setColorAt(i, new THREE.Color().setHSL(.28 + rng() * .14, .5, .22 + rng() * .18));
+      shrubs.setColorAt(i, new THREE.Color().setHSL(.27 + rng() * .1, .43, .13 + rng() * .16));
     }
     shrubs.instanceMatrix.needsUpdate = true;
     shrubs.computeBoundingSphere();
     this.group.add(shrubs);
+
+
+    // Tall palms and intertwined understory: batched, low-poly and light on draw calls.
+    const palms = new THREE.InstancedMesh(new THREE.CylinderGeometry(.16, .27, 1, 6), new THREE.MeshLambertMaterial({ color: 0x524333 }), 54);
+    const leaves = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 54 * 6);
+    const vines = new THREE.InstancedMesh(new THREE.CylinderGeometry(.045, .07, 1, 4), new THREE.MeshLambertMaterial({ color: 0x3b512b }), 140);
+    for (let i = 0; i < palms.count; i++) {
+      const x = (rng() - .5) * 106, z = (rng() - .5) * 106, h = 7 + rng() * 8;
+      instance(palms, i, x, h / 2, z, .35, h, .35, rng() * 6);
+      for (let j = 0; j < 6; j++) {
+        const a = j * Math.PI / 3 + i * .5;
+        instance(leaves, i * 6 + j, x + Math.cos(a) * 1.1, h - .35, z + Math.sin(a) * 1.1, 2.2, .25, .68, a);
+        leaves.setColorAt(i * 6 + j, new THREE.Color().setHSL(.27 + rng() * .08, .46, .14 + rng() * .15));
+      }
+    }
+    for (let i = 0; i < vines.count; i++) {
+      const tree = trees[i], length = 3 + rng() * 6;
+      instance(vines, i, tree.x + tree.width * .55, tree.height * .76 - length * .5, tree.z, .8, length, .8);
+    }
+    for (const mesh of [palms, leaves, vines]) {
+      mesh.frustumCulled = false; mesh.instanceMatrix.needsUpdate = true; this.group.add(mesh);
+    }
+    const ferns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 240 * 4);
+    for (let i = 0; i < 240; i++) {
+      const x = (rng() - .5) * 104, z = (rng() - .5) * 104, size = .7 + rng() * .8;
+      for (let j = 0; j < 4; j++) {
+        const a = j * Math.PI / 2 + i * .8;
+        instance(ferns, i * 4 + j, x + Math.cos(a) * size * .5, size * .58, z + Math.sin(a) * size * .5, size * 1.2, size * .26, size * .44, a);
+        ferns.setColorAt(i * 4 + j, new THREE.Color().setHSL(.28 + rng() * .08, .49, .14 + rng() * .16));
+      }
+    }
+    ferns.frustumCulled = false; ferns.instanceMatrix.needsUpdate = true; this.group.add(ferns);
 
     const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), 60);
     for (let i = 0; i < rocks.count; i++) {
@@ -121,10 +159,27 @@ export class World {
     this.group.add(rocks);
 
     // A clear starting area helps players understand the character and first objective.
-    const startingCircle = new THREE.Mesh(new THREE.CircleGeometry(5.7, 48), new THREE.MeshBasicMaterial({ color: 0x93af6a, transparent: true, opacity: 0.17, depthWrite: false }));
+    const startingCircle = new THREE.Mesh(new THREE.CircleGeometry(5.7, 48), new THREE.MeshBasicMaterial({ color: 0x5c5840, transparent: true, opacity: .06, depthWrite: false }));
     startingCircle.rotation.x = -Math.PI / 2;
     startingCircle.position.set(0, -0.025, 10);
     this.group.add(startingCircle);
+  }
+
+
+  /** Reduce only the leaves in the camera's sightline, leaving the rest of the jungle dense. */
+  refreshCanopies(player, force = false) {
+    if (!force && this.lastX !== undefined && (player.x - this.lastX) ** 2 + (player.z - this.lastZ) ** 2 < 1.8) return;
+    this.lastX = player.x; this.lastZ = player.z;
+    for (let i = 0; i < this.trees.length; i++) {
+      const tree = this.trees[i], dx = tree.x - player.x, dz = tree.z - player.z;
+      const corridor = Math.abs(dx) < 5.8 && dz > -3 && dz < 18;
+      const factor = corridor ? .28 : dx * dx + dz * dz < 36 ? .46 : 1;
+      instance(this.crown, i * 2, tree.x, tree.height * .77, tree.z,
+        tree.width * factor, tree.height * .36 * factor, tree.width * factor, tree.seed * 4);
+      instance(this.crown, i * 2 + 1, tree.x + .35, tree.height * 1.02, tree.z - .25,
+        tree.width * .75 * factor, tree.height * .24 * factor, tree.width * .75 * factor, tree.seed * 6);
+    }
+    this.crown.instanceMatrix.needsUpdate = true;
   }
 
   canOccupy(x, z) {

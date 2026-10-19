@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FIRE_POSITIONS } from './World.js';
 import { FIRE_HEALTH, applyWater, applyWaterArea, findNearestFire } from './FireLogic.js';
 import { validSpreadPosition } from './SurvivalLogic.js';
+import { getSmokeTexture } from './Atmosphere.js';
 
 const CAPACITY = 42;
 const dummy = new THREE.Object3D();
@@ -31,7 +32,7 @@ export class FireSystem {
       this.group.add(mesh);
     }
     this.smokePositions = new Float32Array(CAPACITY * 6 * 3);
-    this.smoke = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0x505b55, size: 1.45, transparent: true, opacity: .37, depthWrite: false, sizeAttenuation: true }));
+    this.smoke = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ map: getSmokeTexture(), color: 0x736a63, size: 4.7, transparent: true, opacity: .6, depthWrite: false, alphaTest: .008, sizeAttenuation: true }));
     this.smoke.geometry.setAttribute('position', new THREE.BufferAttribute(this.smokePositions, 3).setUsage(THREE.DynamicDrawUsage));
     this.smoke.frustumCulled = false;
     this.group.add(this.smoke);

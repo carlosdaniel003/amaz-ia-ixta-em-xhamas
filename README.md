@@ -33,7 +33,9 @@ Não abra `index.html` diretamente com `file://`, pois navegadores restringem m�
 - `src/styles.css`: identidade visual, HUD, tela inicial e controles responsivos.
 - `src/main.js`: inicialização e tratamento de falhas.
 - `src/game/Game.js`: loop, câmera, estado e regras do jogo.
-- `src/game/World.js`: floresta procedural, colisões e cenário.
+- `src/game/World.js`: mata amazônica densa, árvores altas, palmeiras, cipós, samambaias, colisões e abertura localizada na linha de visão da câmera.
+- `src/game/Atmosphere.js`: partículas de fumaça, névoa exponencial, fuligem e luz quente próxima aos incêndios.
+- `src/ui/DamageFeedback.js`: alerta vermelho na tela quando a vida diminui.
 - `src/game/Player.js`: personagem tridimensional e animação de locomoção.
 - `src/game/FireSystem.js`: focos de incêndio, propagação limitada e animação de chamas.
 - `src/game/SurvivalLogic.js`: regras puras de dano, fumaça, cerco, recompensas, economia e propagação.
@@ -51,7 +53,9 @@ Com Node.js 22+ instalado, execute `npm test` (não requer `npm install`). Os te
 
 ## Decisões de desempenho
 
-- Árvores, folhagens, arbustos, pedras e chamas usam `THREE.InstancedMesh` para reduzir draw calls.
+- Árvores altas, palmeiras, cipós, samambaias, vegetação rasteira e chamas usam `THREE.InstancedMesh` para reduzir draw calls.
+- As copas próximas à câmera são reduzidas localmente para preservar a visibilidade do personagem.
+- Fumaça e brasas usam buffers de partículas reaproveitados, sem pós-processamento pesado.
 - Partículas da mangueira e fumaça reutilizam buffers em vez de criar objetos a cada frame.
 - Renderização sem sombras em tempo real, com sombras estilizadas estáticas no solo.
 - Pixel ratio limitado para evitar renderização excessiva em dispositivos de alta densidade.
@@ -64,7 +68,7 @@ Em **Settings → Pages → Build and deployment**, selecione **Deploy from a br
 
 ## Escopo da primeira versão
 
-Contém seleção inicial de dispositivo (computador disponível; celular em desenvolvimento), apresentação, floresta 3D, bombeiro indígena, movimento, mira, mangueira, propagação de incêndios, vida, intoxicação, cura, derrota, moedas, três opções de reforços, animais e resgate, progresso, pausa, vitória e reinício. A estética é low-poly; recursos como níveis, persistência de progresso e ranking ficam para futuras versões.
+Contém seleção inicial de dispositivo (computador disponível; celular em desenvolvimento), apresentação, floresta 3D, bombeiro indígena, movimento, mira, mangueira, propagação de incêndios, vida, intoxicação, cura, derrota, moedas, três opções de reforços, animais e resgate, progresso, pausa, vitória e reinício. A estética low-poly agora inclui vegetação amazônica fechada, céu escurecido, névoa de fumaça, brilho de fogo e feedback vermelho ao sofrer dano; recursos como níveis, persistência de progresso e ranking ficam para futuras versões.
 
 ## Licença
 

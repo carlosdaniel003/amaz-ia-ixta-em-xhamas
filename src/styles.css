@@ -18,3 +18,13 @@
 @media(max-width:900px){.support-shop{right:15px;top:auto;bottom:103px;width:225px}.survival-hud{left:15px;top:94px}.topbar{padding:18px 15px}.brand{font-size:10px}}
 @media(max-width:680px){.device-screen{padding:75px 18px 25px}.device-panel{padding:22px}.device-panel h2{font-size:53px}.support-shop{right:12px;bottom:80px;width:190px;padding:9px}.support-heading{font-size:8px}.support-action{padding:7px}.support-action small{font-size:8px}.survival-hud{top:88px;left:12px;width:195px;padding:10px}.progress-wrap{bottom:20px}.hud{max-width:65vw}.game-tip{bottom:95px}}
 @media(max-height:680px) and (min-width:901px){.support-shop{top:85px}.survival-hud{top:85px}.support-action{padding:8px}.device-screen{padding:65px 20px 25px}}
+
+/* Smoke and heat are light screen-space gradients. No costly full-screen filters. */
+.heat-haze{position:absolute;inset:-4%;z-index:2;pointer-events:none;opacity:.46;background:radial-gradient(ellipse 80% 65% at 88% 76%,rgba(232,93,35,.2),transparent 75%),radial-gradient(ellipse 65% 40% at 10% 4%,rgba(71,63,54,.32),transparent 78%);animation:heat-drift 9s ease-in-out infinite alternate;will-change:transform}
+@keyframes heat-drift{from{transform:translate3d(-1.4%,.5%,0)}to{transform:translate3d(1.4%,-.5%,0)}}
+.damage-flash{position:absolute;inset:0;z-index:9;pointer-events:none;opacity:0;background:radial-gradient(ellipse at 50% 48%,rgba(156,0,0,.06) 22%,rgba(202,14,16,.52) 72%,rgba(155,0,0,.86) 100%)}
+.damage-flash.is-smoke{background:radial-gradient(ellipse at center,rgba(95,17,20,.02) 28%,rgba(145,24,25,.33) 85%,rgba(99,11,13,.58) 100%)}
+.damage-flash.is-active{animation:health-hit .63s ease-out both}
+.damage-flash.is-smoke.is-active{animation-duration:.89s}
+@keyframes health-hit{0%{opacity:0}12%{opacity:1}35%{opacity:.7}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.heat-haze{animation:none}.damage-flash.is-active{animation:none;opacity:.58}}
