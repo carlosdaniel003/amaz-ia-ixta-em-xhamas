@@ -1,101 +1,136 @@
 import * as THREE from 'three';
 import { FIRE_POSITIONS } from './World.js';
-import { FIRE_HEALTH, applyWater, findNearestFire } from './FireLogic.js';
+import { FIRE_HEALTH, applyWater, applyWaterArea, findNearestFire } from './FireLogic.js';
+import { validSpreadPosition } from './SurvivalLogic.js';
+
+const CAPACITY = 42;
 const dummy = new THREE.Object3D();
+const RAND_OFFSETS = [.15, 2.35, 4.5, 1.1, 5.3, 3.4, .8, 4.1];
 
 export class FireSystem {
   constructor(scene) {
-    this.fires = FIRE_POSITIONS.map(([x, z]) => ({ x, z, health: FIRE_HEALTH, active: true }));
-    this.activeCount = this.fires.length;
+    this.fires = [];
     this.group = new THREE.Group();
+    this.activeCount = 0;
     scene.add(this.group);
     this.layers = [];
     this.createVisuals();
+    this.reset();
   }
 
   createVisuals() {
-    const scorch = new THREE.InstancedMesh(
-      new THREE.CircleGeometry(1, 18),
-      new THREE.MeshBasicMaterial({ color: 0x382f28, transparent: true, opacity: .75, depthWrite: false }),
-      this.fires.length,
-    );
-    this.fires.forEach((fire, i) => {
-      dummy.position.set(fire.x, -.018, fire.z);
-      dummy.rotation.set(-Math.PI / 2, 0, 0);
-      dummy.scale.set(2.65, 2.25, 1);
-      dummy.updateMatrix();
-      scorch.setMatrixAt(i, dummy.matrix);
-    });
-    scorch.instanceMatrix.needsUpdate = true;
+    const scorch = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 14), new THREE.MeshBasicMaterial({ color: 0x382f28, transparent: true, opacity: .77, depthWrite: false }), CAPACITY);
+    this.scorch = scorch;
     this.group.add(scorch);
-
     const colors = [0xff5a32, 0xff9c3b, 0xffdc69];
     for (let layer = 0; layer < 3; layer++) {
-      const mesh = new THREE.InstancedMesh(
-        new THREE.ConeGeometry(1, 2.25, 5),
-        new THREE.MeshBasicMaterial({ color: colors[layer], transparent: true, opacity: layer === 2 ? .86 : .97, depthWrite: false }),
-        this.fires.length * 3,
-      );
+      const mesh = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 2.25, 5), new THREE.MeshBasicMaterial({ color: colors[layer], transparent: true, opacity: layer === 2 ? .86 : .97, depthWrite: false }), CAPACITY * 3);
       mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.layers.push(mesh);
       this.group.add(mesh);
     }
-    this.smokeCount = this.fires.length * 6;
-    this.smokePositions = new Float32Array(this.smokeCount * 3);
-    this.smoke = new THREE.Points(
-      new THREE.BufferGeometry(),
-      new THREE.PointsMaterial({ color: 0x5b6659, size: 1.14, transparent: true, opacity: .31, depthWrite: false, sizeAttenuation: true }),
-    );
-    this.smoke.geometry.setAttribute('position', new THREE.BufferAttribute(this.smokePositions, 3));
+    this.smokePositions = new Float32Array(CAPACITY * 6 * 3);
+    this.smoke = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0x505b55, size: 1.45, transparent: true, opacity: .37, depthWrite: false, sizeAttenuation: true }));
+    this.smoke.geometry.setAttribute('position', new THREE.BufferAttribute(this.smokePositions, 3).setUsage(THREE.DynamicDrawUsage));
     this.smoke.frustumCulled = false;
     this.group.add(this.smoke);
   }
 
+  addFire(x, z, generation = 0) {
+    if (this.fires.length >= CAPACITY) return false;
+    const fire = { x, z, health: FIRE_HEALTH, active: true, generation, age: 0, spreadAt: 13 + (this.fires.length * 7 % 12), attempts: 0 };
+    this.fires.push(fire);
+    this.activeCount++;
+    return fire;
+  }
+
   reset() {
-    this.activeCount = this.fires.length;
-    for (const fire of this.fires) { fire.active = true; fire.health = FIRE_HEALTH; }
+    this.fires.length = 0;
+    this.activeCount = 0;
+    FIRE_POSITIONS.forEach(([x, z]) => this.addFire(x, z));
     this.update(0, 0);
   }
 
-  spray(position, direction, delta) {
-    const completed = applyWater(this.fires, position, direction, delta);
+  spray(position, direction, dt, multiplier = 1) {
+    const completed = applyWater(this.fires, position, direction, dt, multiplier);
     this.activeCount -= completed.length;
     return completed;
   }
 
-  nearest(position, maxRange = 18) {
-    return findNearestFire(this.fires, position, maxRange);
+  drench(x, z, radius, damage) {
+    const completed = applyWaterArea(this.fires, x, z, radius, damage);
+    this.activeCount -= completed.length;
+    return completed;
+  }
+
+  nearest(position, maxRange = 18) { return findNearestFire(this.fires, position, maxRange); }
+
+  spread(dt, canOccupy) {
+    const newFires = [];
+    const priorLength = this.fires.length;
+    for (let index = 0; index < priorLength && this.fires.length < CAPACITY; index++) {
+      const fire = this.fires[index];
+      if (!fire.active || fire.generation >= 3) continue;
+      fire.age += dt;
+      if (fire.age < fire.spreadAt) continue;
+      fire.age = 0;
+      fire.spreadAt = 17 + (index * 3 % 9);
+      for (let attempt = 0; attempt < RAND_OFFSETS.length; attempt++) {
+        const angle = RAND_OFFSETS[(attempt + fire.attempts) % RAND_OFFSETS.length] + index * .71;
+        const radius = 5.2 + (attempt % 3) * 1.1;
+        const x = fire.x + Math.cos(angle) * radius;
+        const z = fire.z + Math.sin(angle) * radius;
+        if (validSpreadPosition(this.fires, x, z, canOccupy)) {
+          const next = this.addFire(x, z, fire.generation + 1);
+          if (next) newFires.push(next);
+          break;
+        }
+      }
+      fire.attempts++;
+    }
+    return newFires;
   }
 
   update(delta, elapsed) {
-    let smokeIndex = 0;
-    for (let f = 0; f < this.fires.length; f++) {
+    this.smokePositions.fill(-100);
+    for (let f = 0; f < CAPACITY; f++) {
       const fire = this.fires[f];
-      const health = fire.active ? .4 + fire.health / FIRE_HEALTH * .6 : 0;
+      const health = fire?.active ? .4 + fire.health / FIRE_HEALTH * .6 : 0;
+      if (fire) {
+        dummy.position.set(fire.x, -.018, fire.z);
+        dummy.rotation.set(-Math.PI / 2, 0, 0);
+        dummy.scale.set(2.65, 2.25, 1);
+      } else { dummy.position.set(0, -100, 0); dummy.rotation.set(0, 0, 0); dummy.scale.set(0, 0, 0); }
+      dummy.updateMatrix();
+      this.scorch.setMatrixAt(f, dummy.matrix);
       for (let layer = 0; layer < this.layers.length; layer++) {
         for (let flame = 0; flame < 3; flame++) {
           const index = f * 3 + flame;
-          const phase = f * 1.7 + layer * 2.8 + flame * 3.1;
-          const size = health * (1 + .12 * Math.sin(elapsed * 8 + phase));
-          const x = fire.x + Math.sin(phase) * .7 * health + .14 * Math.sin(elapsed * 3 + phase);
-          const z = fire.z + Math.cos(phase) * .7 * health;
-          const h = (1.15 + layer * -.2 + flame * .12) * size;
-          dummy.position.set(x, Math.max(0, h), z);
-          dummy.rotation.set(.06 * Math.sin(elapsed * 4 + phase), phase + elapsed * .15, -.10 * Math.sin(elapsed * 3.2 + phase));
-          dummy.scale.set((.86 - layer * .2) * size, h, (.86 - layer * .2) * size);
+          if (fire?.active) {
+            const phase = f * 1.7 + layer * 2.8 + flame * 3.1;
+            const size = health * (1 + .12 * Math.sin(elapsed * 8 + phase));
+            const x = fire.x + Math.sin(phase) * .7 * health + .14 * Math.sin(elapsed * 3 + phase);
+            const z = fire.z + Math.cos(phase) * .7 * health;
+            const h = (1.15 + layer * -.2 + flame * .12) * size;
+            dummy.position.set(x, Math.max(0, h), z);
+            dummy.rotation.set(.06 * Math.sin(elapsed * 4 + phase), phase + elapsed * .15, -.10 * Math.sin(elapsed * 3.2 + phase));
+            dummy.scale.set((.86 - layer * .2) * size, h, (.86 - layer * .2) * size);
+          } else { dummy.position.set(0, -100, 0); dummy.rotation.set(0, 0, 0); dummy.scale.set(0, 0, 0); }
           dummy.updateMatrix();
           this.layers[layer].setMatrixAt(index, dummy.matrix);
         }
       }
+      if (!fire?.active) continue;
       for (let p = 0; p < 6; p++) {
-        const index = smokeIndex++ * 3;
+        const index = (f * 6 + p) * 3;
         const cycle = (elapsed * (.22 + p * .01) + p / 6 + f * .138) % 1;
-        this.smokePositions[index] = fire.x + (Math.sin(p * 4.37 + cycle * 7) * (0.3 + cycle * 2)) * health;
-        this.smokePositions[index + 1] = fire.active ? 1.8 + cycle * 6.5 : -100;
-        this.smokePositions[index + 2] = fire.z + (Math.cos(p * 3.26 + cycle * 6) * (0.3 + cycle * 2)) * health;
+        this.smokePositions[index] = fire.x + Math.sin(p * 4.37 + cycle * 7) * (.3 + cycle * 2) * health;
+        this.smokePositions[index + 1] = 1.8 + cycle * 6.5;
+        this.smokePositions[index + 2] = fire.z + Math.cos(p * 3.26 + cycle * 6) * (.3 + cycle * 2) * health;
       }
     }
+    this.scorch.instanceMatrix.needsUpdate = true;
     for (const mesh of this.layers) mesh.instanceMatrix.needsUpdate = true;
     this.smoke.geometry.attributes.position.needsUpdate = true;
   }

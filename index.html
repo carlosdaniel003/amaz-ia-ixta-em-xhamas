@@ -32,22 +32,49 @@
         </div>
       </header>
 
-      <section class="screen screen-start" id="start-screen" aria-labelledby="game-title">
+      <section class="screen device-screen" id="device-screen" aria-labelledby="device-title">
+        <div class="device-panel">
+          <div class="eyebrow"><span class="eyebrow-line"></span> ANTES DE COMEÇAR / 00</div>
+          <h2 id="device-title">Onde você<br /><em>vai jogar?</em></h2>
+          <p>Escolha seu dispositivo para configurar a experiência.</p>
+          <div class="device-options">
+            <button class="device-option" type="button" id="desktop-button"><span class="device-glyph" aria-hidden="true">▣</span><strong>COMPUTADOR</strong><small>Teclado e mouse · disponível</small><span class="device-arrow" aria-hidden="true">↗</span></button>
+            <button class="device-option device-option-muted" type="button" id="cell-button"><span class="device-glyph" aria-hidden="true">▯</span><strong>CELULAR</strong><small>Controles de toque · em desenvolvimento</small><span class="device-arrow" aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+      </section>
+      <section class="screen device-screen" id="mobile-notice" hidden aria-labelledby="mobile-title">
+        <div class="device-panel"><div class="eyebrow">VERSÃO PARA CELULAR</div><h2 id="mobile-title">Em breve,<br /><em>na sua mão.</em></h2><p>Estamos aprimorando o desempenho e os controles para telas sensíveis ao toque. Por enquanto, o jogo está disponível para computador.</p><button class="primary-button" id="back-device-button" type="button"><span>VOLTAR</span><span aria-hidden="true">↶</span></button></div>
+      </section>
+
+      <section class="screen screen-start" id="start-screen" hidden aria-labelledby="game-title">
         <div class="intro">
           <div class="eyebrow"><span class="eyebrow-line"></span> MISSÃO AMAZÔNIA <span class="eyebrow-number">/ 001</span></div>
           <h1 id="game-title">A Amazõia<br /><span>ixta em <em>xhamas.</em></span></h1>
-          <p class="intro-copy">O fogo avança. A floresta precisa de alguém que não desista dela.</p>
+          <p class="intro-copy">Apague as chamas, resgate os animais e reúna moedas para contratar bombeiros e solicitar apoio aéreo antes que o fogo cerque você.</p>
           <button type="button" class="primary-button" id="start-button"><span>COMEÇAR MISSÃO</span><span class="button-arrow" aria-hidden="true">↗</span></button>
-          <p class="desktop-instructions"><kbd>W A S D</kbd> PARA MOVER <span>·</span> <kbd>MOUSE</kbd> PARA MIRAR <span>·</span> <kbd>CLIQUE</kbd> PARA APAGAR</p>
+          <p class="desktop-instructions"><kbd>W A S D</kbd> MOVER <span>·</span> <kbd>MOUSE</kbd> MIRAR <span>·</span> <kbd>CLIQUE</kbd> ÁGUA <span>·</span> <kbd>1 2 3</kbd> REFORÇOS</p><button class="link-button" id="back-start-button" type="button">← MUDAR DISPOSITIVO</button>
           <p class="touch-instructions">MOVA COM O CONTROLE À ESQUERDA E SEGURE O BOTÃO ÁGUA.</p>
         </div>
         <aside class="mission-card" aria-label="Resumo da missão">
           <div class="mission-number">01 <span>/ PRIMEIRA MISSÃO</span></div>
           <div class="mission-rule"></div>
           <div class="mission-name">GUARDIÃO<br />DA FLORESTA</div>
-          <p>Encontre os focos de incêndio. Aponte a mangueira e mantenha o jato até apagar cada chama.</p>
-          <div class="mission-bottom"><span>RECOMPENSA POR FOCO</span><strong>◈ 25</strong></div>
+          <p>Evite fogo e fumaça. Afaste-se para recuperar a vida. Apague os focos, salve animais e invista as moedas em reforços.</p>
+          <div class="mission-bottom"><span>RECOMPENSA POR FOCO</span><strong>◈ 30+</strong></div>
         </aside>
+      </section>
+
+      <section class="survival-hud" id="survival-hud" hidden aria-label="Condições do personagem">
+        <div class="meter-row"><span>VIDA</span><div class="meter"><div id="health-fill" class="meter-fill health-fill"></div></div><strong id="health-value">100</strong></div>
+        <div class="meter-row"><span>FUMAÇA</span><div class="meter"><div id="smoke-fill" class="meter-fill smoke-fill"></div></div><strong id="smoke-value">0%</strong></div>
+        <div class="wildlife-stats"><span>ANIMAIS SALVOS <strong id="rescued-count">0</strong></span><span>PERDIDOS <strong id="lost-count">2</strong></span></div>
+      </section>
+      <section class="support-shop" id="support-shop" hidden aria-label="Loja de reforços">
+        <div class="support-heading"><span>REFORÇOS DA FLORESTA</span><span><strong id="helper-count">0</strong>/3 aliados</span></div>
+        <button id="hire-button" class="support-action" type="button" disabled><span><strong>1 · BOMBEIRO</strong><small>Ajuda a apagar focos</small></span><em>◈ 110</em></button>
+        <button id="municipal-button" class="support-action" type="button" disabled><span><strong>2 · PREFEITURA</strong><small>Avião de combate leve</small></span><em>◈ 220</em></button>
+        <button id="state-button" class="support-action" type="button" disabled><span><strong>3 · ESTADO</strong><small>Avião de grande porte</small></span><em>◈ 460</em></button>
       </section>
 
       <section class="progress-wrap" id="progress-wrap" aria-label="Progresso da missão" hidden>
@@ -55,7 +82,7 @@
         <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
       </section>
 
-      <div class="game-tip" id="game-tip" hidden><span class="tip-pip"></span><span id="tip-text">Aponte a mangueira para o fogo e segure o clique.</span></div>
+      <div class="game-tip" id="game-tip" hidden><span class="tip-pip"></span><span id="tip-text">Fique longe das chamas e da fumaça. Segure o clique para apagar.</span></div>
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
       <section class="screen screen-modal" id="pause-screen" hidden aria-labelledby="pause-title">
@@ -63,13 +90,13 @@
       </section>
 
       <section class="screen screen-modal" id="win-screen" hidden aria-labelledby="win-title">
-        <div class="modal-content"><span class="eyebrow">MISSÃO CONCLUÍDA · 100%</span><h2 id="win-title">A floresta<br /><em>respira outra vez.</em></h2><p>Todos os focos foram apagados. Você protegeu mais um pedaço da Amazônia.</p><div class="win-summary"><span>MOEDAS CONQUISTADAS</span><strong id="final-coins">◈ 300</strong></div><button class="primary-button" id="restart-button" type="button"><span>JOGAR NOVAMENTE</span><span aria-hidden="true">↗</span></button></div>
+        <div class="modal-content"><span class="eyebrow">MISSÃO CONCLUÍDA · 100%</span><h2 id="win-title">A floresta<br /><em>respira outra vez.</em></h2><p>Todos os focos foram apagados. Você protegeu mais um pedaço da Amazônia.</p><p class="end-detail" id="final-saved">0 salvos · 2 perdidos</p><div class="win-summary"><span>MOEDAS RESTANTES</span><strong id="final-coins">◈ 0</strong></div><button class="primary-button" id="restart-button" type="button"><span>JOGAR NOVAMENTE</span><span aria-hidden="true">↗</span></button></div>
       </section>
 
-      <div class="mobile-controls" id="mobile-controls" hidden>
-        <div class="virtual-stick" id="virtual-stick" role="application" aria-label="Controle virtual de movimento"><div class="stick-center" id="stick-center"></div></div>
-        <button type="button" class="spray-button" id="spray-button" aria-label="Segurar para jogar água"><span class="spray-symbol" aria-hidden="true">≋</span><span>ÁGUA</span></button>
-      </div>
+      <section class="screen screen-modal" id="lost-screen" hidden aria-labelledby="lost-title">
+        <div class="modal-content"><span class="eyebrow">MISSÃO ENCERRADA</span><h2 id="lost-title">O fogo<br /><em>avançou demais.</em></h2><p>Você não resistiu às chamas ou à fumaça. Afaste-se do perigo e chame reforços antes de ficar cercado na próxima tentativa.</p><p class="end-detail" id="lost-saved">0 animais salvos</p><div class="win-summary"><span>MOEDAS RESTANTES</span><strong id="lost-coins">◈ 0</strong></div><p class="end-detail">Animais perdidos: <strong id="final-lost">2</strong></p><button class="primary-button" id="retry-button" type="button"><span>TENTAR NOVAMENTE</span><span aria-hidden="true">↗</span></button></div>
+      </section>
+
       <div class="bottom-caption" id="bottom-caption"><span>UM JOGO SOBRE CUIDAR DO QUE IMPORTA.</span><span>FEITO PARA JOGAR NO NAVEGADOR</span></div>
       <div id="fatal-error" class="fatal-error" hidden role="alert"></div>
     </main>

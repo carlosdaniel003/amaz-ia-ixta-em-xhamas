@@ -21,6 +21,7 @@ export class Player {
     this.createCharacter();
     this.animationTime = 0;
     this.yaw = 0;
+    this._forward = new THREE.Vector3(0, 0, -1);
   }
 
   createCharacter() {
@@ -71,7 +72,7 @@ export class Player {
   }
 
   get position() { return this.root.position; }
-  get forward() { return new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)); }
+  get forward() { return this._forward; }
 
   nozzleWorldPosition(target = new THREE.Vector3()) {
     return this.body.localToWorld(target.set(.52, 1.27, -.97));
@@ -83,6 +84,7 @@ export class Player {
     if (dx * dx + dz * dz < .001) return;
     this.yaw = Math.atan2(-dx, -dz);
     this.body.rotation.y = this.yaw;
+    this._forward.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
   }
 
   update(delta, moving) {

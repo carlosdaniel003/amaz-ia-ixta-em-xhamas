@@ -3,7 +3,7 @@ export const FIRE_HEALTH = 100;
 export const WATER_DAMAGE_PER_SECOND = 48;
 export const HOSE_RANGE = 12;
 
-export function applyWater(fires, position, direction, delta) {
+export function applyWater(fires, position, direction, delta, multiplier = 1) {
   const extinguished = [];
   if (delta <= 0) return extinguished;
   for (const fire of fires) {
@@ -14,11 +14,21 @@ export function applyWater(fires, position, direction, delta) {
     if (forward < 0 || forward > HOSE_RANGE) continue;
     const side = Math.abs(dx * direction.z - dz * direction.x);
     if (side > 1.35 + forward * .075) continue;
-    fire.health = Math.max(0, fire.health - WATER_DAMAGE_PER_SECOND * delta);
-    if (fire.health === 0) {
-      fire.active = false;
-      extinguished.push(fire);
-    }
+    fire.health = Math.max(0, fire.health - WATER_DAMAGE_PER_SECOND * delta * multiplier);
+    if (fire.health === 0) { fire.active = false; extinguished.push(fire); }
+  }
+  return extinguished;
+}
+
+export function applyWaterArea(fires, x, z, radius, damage) {
+  const extinguished = [];
+  if (radius <= 0 || damage <= 0) return extinguished;
+  for (const fire of fires) {
+    if (!fire.active) continue;
+    const distance = Math.hypot(fire.x - x, fire.z - z);
+    if (distance > radius) continue;
+    fire.health = Math.max(0, fire.health - damage * Math.max(.25, 1 - distance / (radius * 1.25)));
+    if (fire.health === 0) { fire.active = false; extinguished.push(fire); }
   }
   return extinguished;
 }

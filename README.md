@@ -1,6 +1,6 @@
 # A Amazõia ixta em xhamas
 
-Jogo 3D gratuito para navegador: um bombeiro indígena protege a floresta amazônica, apaga incêndios com uma mangueira e ganha moedas por cada foco eliminado.
+Jogo 3D gratuito para navegador: bombeiros indígenas combatem queimadas amazônicas, resgatam animais e solicitam apoio aéreo. O jogador começa sozinho, acumula moedas apagando focos e precisa sobreviver ao avanço do fogo e à fumaça.
 
 ## Jogar localmente
 
@@ -20,11 +20,12 @@ Não abra `index.html` diretamente com `file://`, pois navegadores restringem m�
 | Computador | Mirar | Ponteiro do mouse |
 | Computador | Jogar água | Segurar botão esquerdo do mouse, Espaço ou F |
 | Computador | Pausar/retomar | Esc ou P |
-| Celular/tablet | Mover | Controle virtual à esquerda |
-| Celular/tablet | Mirar | Automático, no foco mais próximo |
-| Celular/tablet | Jogar água | Segurar ÁGUA à direita |
+| Computador | Contratar bombeiro | 1 (110 moedas; limite 3) |
+| Computador | Solicitar avião da prefeitura | 2 (220 moedas; intervalo de 18 s) |
+| Computador | Solicitar avião do estado | 3 (460 moedas; intervalo de 18 s) |
+| Celular/tablet | Acesso | Tela informativa: versão em desenvolvimento |
 
-**Objetivo:** apagar todos os 12 focos de incêndio. Cada foco apagado rende 25 moedas (300 no total). Mantenha a água direcionada para um foco até extingui-lo.
+**Objetivo:** apagar todos os focos de incêndio sem morrer. O cenário começa com 12 focos, que se propagam gradualmente até um limite de 42. Cada foco extinto concede 30 moedas mais um bônus por sequência de extinções rápidas. Contato direto com fogo causa dano; respirar fumaça eleva o indicador de intoxicação e pode causar perda de vida. A vida se regenera após alguns segundos fora do perigo, com baixa exposição à fumaça. Focos que cercam o personagem aceleram os danos. Animais podem ser resgatados ao apagar incêndios próximos; alguns já foram encontrados mortos e outros podem morrer por fogo ou fumaça caso a missão demore.
 
 ## Estrutura
 
@@ -34,15 +35,19 @@ Não abra `index.html` diretamente com `file://`, pois navegadores restringem m�
 - `src/game/Game.js`: loop, câmera, estado e regras do jogo.
 - `src/game/World.js`: floresta procedural, colisões e cenário.
 - `src/game/Player.js`: personagem tridimensional e animação de locomoção.
-- `src/game/FireSystem.js`: focos de incêndio e animação de chamas.
+- `src/game/FireSystem.js`: focos de incêndio, propagação limitada e animação de chamas.
+- `src/game/SurvivalLogic.js`: regras puras de dano, fumaça, cerco, recompensas, economia e propagação.
+- `src/game/Helpers.js`: bombeiros aliados que procuram focos e lançam água.
+- `src/game/AirSupport.js`: aviões de apoio municipal e estadual com água em área.
+- `src/game/Wildlife.js`: animais estilizados, resgates e perdas sem violência gráfica.
 - `src/game/FireLogic.js`: regras puras de dano e seleção de alvos, testadas sem renderizador.
 - `src/game/WaterSystem.js`: partículas recicladas do jato de água.
-- `src/game/Input.js`: entrada para teclado, mouse e controles de toque.
+- `src/game/Input.js`: entrada para teclado e mouse.
 - `src/ui/UI.js`: telas, moedas, progresso e mensagens.
 
 ## Testes
 
-Com Node.js 22+ instalado, execute `npm test` (não requer `npm install`). Os testes cobrem a mira, alcance, duração do jato, extinção única e seleção de alvos.
+Com Node.js 22+ instalado, execute `npm test` (não requer `npm install`). Os testes cobrem mira, alcance, extinção única, seleção de alvos, dano por fogo, intoxicação por fumaça, cura, cerco, preços, limite de aliados e condições da propagação.
 
 ## Decisões de desempenho
 
@@ -59,7 +64,7 @@ Em **Settings → Pages → Build and deployment**, selecione **Deploy from a br
 
 ## Escopo da primeira versão
 
-Contém tela inicial, floresta 3D, personagem bombeiro, movimento, mira, mangueira, focos de incêndio, moedas, progresso, pausa, vitória e reinício. A estética é low-poly; sistemas como níveis, persistência de progresso, ranking e loja de itens ficam fora desta primeira versão.
+Contém seleção inicial de dispositivo (computador disponível; celular em desenvolvimento), apresentação, floresta 3D, bombeiro indígena, movimento, mira, mangueira, propagação de incêndios, vida, intoxicação, cura, derrota, moedas, três opções de reforços, animais e resgate, progresso, pausa, vitória e reinício. A estética é low-poly; recursos como níveis, persistência de progresso e ranking ficam para futuras versões.
 
 ## Licença
 
