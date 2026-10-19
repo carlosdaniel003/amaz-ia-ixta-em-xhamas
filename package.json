@@ -1,0 +1,10 @@
+{
+  "name": "amaz-ia-ixta-em-xhamas",
+  "private": true,
+  "type": "module",
+  "description": "Jogo 3D de combate às queimadas na Amazônia, executado no navegador.",
+  "scripts": {
+    "test": "node --test",
+    "serve": "python -m http.server 8000"
+  }
+}

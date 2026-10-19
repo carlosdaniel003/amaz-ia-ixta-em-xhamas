@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#102f29" />
+    <meta name="description" content="Proteja a floresta em um jogo 3D de combate às queimadas na Amazônia." />
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <title>A Amazõia ixta em xhamas — Jogo 3D</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="app">
+      <canvas id="game-canvas" aria-label="Floresta amazônica em 3D" tabindex="0"></canvas>
+      <div class="scene-vignette" aria-hidden="true"></div>
+      <div class="grain" aria-hidden="true"></div>
+
+      <header class="topbar" id="topbar">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><span>AMAZÕIA <span class="brand-dim">/</span> IXTA EM XHAMAS</span></div>
+        <div class="hud" id="hud" hidden>
+          <div class="hud-stat"><span class="stat-icon flame-icon" aria-hidden="true">●</span><span class="stat-label">FOCOS</span><strong id="fire-count">12</strong></div>
+          <span class="hud-divider"></span>
+          <div class="hud-stat"><span class="coin-icon" aria-hidden="true">◈</span><span class="stat-label">MOEDAS</span><strong id="coin-count">0</strong></div>
+          <button class="pause-button" id="pause-button" type="button" title="Pausar jogo (Esc)">Ⅱ</button>
+        </div>
+      </header>
+
+      <section class="screen screen-start" id="start-screen" aria-labelledby="game-title">
+        <div class="intro">
+          <div class="eyebrow"><span class="eyebrow-line"></span> MISSÃO AMAZÔNIA <span class="eyebrow-number">/ 001</span></div>
+          <h1 id="game-title">A Amazõia<br /><span>ixta em <em>xhamas.</em></span></h1>
+          <p class="intro-copy">O fogo avança. A floresta precisa de alguém que não desista dela.</p>
+          <button type="button" class="primary-button" id="start-button"><span>COMEÇAR MISSÃO</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+          <p class="desktop-instructions"><kbd>W A S D</kbd> PARA MOVER <span>·</span> <kbd>MOUSE</kbd> PARA MIRAR <span>·</span> <kbd>CLIQUE</kbd> PARA APAGAR</p>
+          <p class="touch-instructions">MOVA COM O CONTROLE À ESQUERDA E SEGURE O BOTÃO ÁGUA.</p>
+        </div>
+        <aside class="mission-card" aria-label="Resumo da missão">
+          <div class="mission-number">01 <span>/ PRIMEIRA MISSÃO</span></div>
+          <div class="mission-rule"></div>
+          <div class="mission-name">GUARDIÃO<br />DA FLORESTA</div>
+          <p>Encontre os focos de incêndio. Aponte a mangueira e mantenha o jato até apagar cada chama.</p>
+          <div class="mission-bottom"><span>RECOMPENSA POR FOCO</span><strong>◈ 25</strong></div>
+        </aside>
+      </section>
+
+      <section class="progress-wrap" id="progress-wrap" aria-label="Progresso da missão" hidden>
+        <div class="progress-heading"><span>RECUPERAÇÃO DA FLORESTA</span><span id="progress-label">0%</span></div>
+        <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+      </section>
+
+      <div class="game-tip" id="game-tip" hidden><span class="tip-pip"></span><span id="tip-text">Aponte a mangueira para o fogo e segure o clique.</span></div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <section class="screen screen-modal" id="pause-screen" hidden aria-labelledby="pause-title">
+        <div class="modal-content"><span class="eyebrow">MISSÃO INTERROMPIDA</span><h2 id="pause-title">Uma pausa<br /><em>na missão.</em></h2><p>A floresta estará aqui quando você voltar.</p><button class="primary-button" id="resume-button" type="button"><span>CONTINUAR</span><span aria-hidden="true">↗</span></button></div>
+      </section>
+
+      <section class="screen screen-modal" id="win-screen" hidden aria-labelledby="win-title">
+        <div class="modal-content"><span class="eyebrow">MISSÃO CONCLUÍDA · 100%</span><h2 id="win-title">A floresta<br /><em>respira outra vez.</em></h2><p>Todos os focos foram apagados. Você protegeu mais um pedaço da Amazônia.</p><div class="win-summary"><span>MOEDAS CONQUISTADAS</span><strong id="final-coins">◈ 300</strong></div><button class="primary-button" id="restart-button" type="button"><span>JOGAR NOVAMENTE</span><span aria-hidden="true">↗</span></button></div>
+      </section>
+
+      <div class="mobile-controls" id="mobile-controls" hidden>
+        <div class="virtual-stick" id="virtual-stick" role="application" aria-label="Controle virtual de movimento"><div class="stick-center" id="stick-center"></div></div>
+        <button type="button" class="spray-button" id="spray-button" aria-label="Segurar para jogar água"><span class="spray-symbol" aria-hidden="true">≋</span><span>ÁGUA</span></button>
+      </div>
+      <div class="bottom-caption" id="bottom-caption"><span>UM JOGO SOBRE CUIDAR DO QUE IMPORTA.</span><span>FEITO PARA JOGAR NO NAVEGADOR</span></div>
+      <div id="fatal-error" class="fatal-error" hidden role="alert"></div>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
