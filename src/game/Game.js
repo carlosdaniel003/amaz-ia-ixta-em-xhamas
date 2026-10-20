@@ -11,6 +11,7 @@ import { Wildlife } from './Wildlife.js';
 import { Atmosphere } from './Atmosphere.js';
 import { DamageFeedback } from '../ui/DamageFeedback.js';
 import { worldMovement } from './FirstPersonLogic.js';
+import { findGraphicsContext } from './GraphicsSupport.js';
 import { MAX_HEALTH, HIRE_COST, MUNICIPAL_COST, STATE_COST, MAX_HELPERS, exposureAt, isEncircled, advanceSurvival, extinguishReward, canBuy } from './SurvivalLogic.js';
 
 const MOVE_SPEED = 8.5;
@@ -98,15 +99,16 @@ export class Game {
 
   /** Test WebGL2 on the game canvas before allocating all the geometry. */
   createRenderer() {
-    const gl = this.canvas.getContext('webgl2', {
+    const { context: gl, type, attempts } = findGraphicsContext(this.canvas, {
       alpha: false, antialias: false, stencil: false, depth: true,
       powerPreference: 'low-power', preserveDrawingBuffer: false,
     });
-    if (!gl) {
-      throw new Error('WebGL2 indisponível neste navegador. A aplicação não conseguiu obter um contexto gráfico.');
-    }
-    this.diagnostics.webgl = String(gl.getParameter(gl.VERSION) || 'WebGL2');
+    this.diagnostics.contextType = type;
+    this.diagnostics.webglAttempts = attempts.join('; ') || 'WebGL2 disponível';
+    this.diagnostics.webgl = String(gl.getParameter(gl.VERSION) || type);
     this.diagnostics.maxTextureSize = String(gl.getParameter(gl.MAX_TEXTURE_SIZE) || 'desconhecido');
+    // WebGL1 paths are especially sensitive to fill rate and texture allocations.
+    if (type === 'WebGL1') this.renderScale = .7;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas, context: gl, antialias: false,
@@ -191,7 +193,9 @@ export class Game {
     const diagnostics = [
       'Etapa: ' + this.startupStage,
       'Erro: ' + message,
+      'API gráfica: ' + (this.diagnostics.contextType || 'nenhuma'),
       'WebGL: ' + (this.diagnostics.webgl || 'não inicializado'),
+      'Tentativas: ' + (this.diagnostics.webglAttempts || 'sem contexto'),
       'Tamanho máximo de textura: ' + (this.diagnostics.maxTextureSize || 'não verificado'),
       'Contexto perdido: ' + (this.gpuLost ? 'sim' : 'não'),
       'Navegador: ' + navigator.userAgent,
@@ -205,7 +209,7 @@ export class Game {
     title.textContent = 'Não foi possível iniciar os gráficos 3D';
     const details = document.createElement('p');
     details.textContent = this.gpuLost
-      ? 'O navegador perdeu a conexão com a GPU. O jogo foi interrompido para evitar novos travamentos.'
+      ? 'O navegador perdeu o contexto gráfico. O jogo foi interrompido para evitar novos travamentos.'
       : 'Uma etapa da inicialização falhou. O erro técnico está indicado abaixo — isso não significa necessariamente que a placa de vídeo esteja com defeito.';
     const code = document.createElement('pre');
     code.textContent = diagnostics;

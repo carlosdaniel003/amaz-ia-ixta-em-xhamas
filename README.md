@@ -4,7 +4,7 @@ Jogo 3D gratuito para navegador: bombeiros indígenas combatem queimadas amazôn
 
 ## Jogar localmente
 
-Este projeto é **estático, sem build e sem dependências para instalar**. Requer um navegador moderno com WebGL e uma conexão com a internet para carregar a versão fixada do Three.js (`0.180.0`) pelo CDN.
+Este projeto é **estático, sem build e sem dependências para instalar**. Requer um navegador moderno com WebGL e uma conexão com a internet para carregar a versão fixada do Three.js (`0.162.0`) pelo CDN.
 
 1. Clone o repositório.
 2. Na raiz, execute `python -m http.server 8000` (ou use qualquer servidor estático, como Live Server).
@@ -60,7 +60,7 @@ A página de escolha de dispositivo carrega sem criar WebGL ou objetos 3D. Ao in
 
 ## Diagnóstico de falha gráfica
 
-Se o jogo ainda apresentar falha após clicar em **Começar missão**, use **Copiar diagnóstico** na tela do próprio jogo e envie o texto para análise. A seção mostra a etapa em que ocorreu o erro, a mensagem retornada pelo navegador, a disponibilidade do WebGL2 e se ocorreu `webglcontextlost`. Se WebGL2 estiver indisponível, verifique a aceleração gráfica nas configurações do navegador e seu relatório em `chrome://gpu` ou `edge://gpu`. O jogo depende de WebGL2 por utilizar Three.js 0.180.0. Uma GPU sem suporte ou um driver bloqueado não pode ser corrigido apenas no código do jogo.
+Se o jogo ainda apresentar falha após clicar em **Começar missão**, use **Copiar diagnóstico** na tela do próprio jogo e envie o texto para análise. A seção mostra a etapa em que ocorreu o erro, a mensagem retornada pelo navegador, a disponibilidade do WebGL2 e se ocorreu `webglcontextlost`. Se WebGL2 estiver indisponível, verifique a aceleração gráfica nas configurações do navegador e seu relatório em `chrome://gpu` ou `edge://gpu`. O jogo usa Three.js 0.162.0, com suporte a WebGL2 e fallback automático para WebGL1 quando a extensão de instanciamento `ANGLE_instanced_arrays` está disponível. Se ambos os contextos estiverem desabilitados, o navegador precisa disponibilizar pelo menos WebGL1; isso depende das configurações do Edge, das políticas de segurança, do driver e da placa gráfica.
 
 ## Decisões de desempenho
 
@@ -84,3 +84,10 @@ Contém seleção inicial de dispositivo (computador disponível; celular em des
 ## Licença
 
 Código próprio do projeto. A biblioteca Three.js é utilizada por CDN sob a licença MIT. Nenhum conteúdo 3D de terceiros é incorporado ao repositório.
+
+
+## Compatibilidade com WebGL1 e WebGL2
+
+Ao iniciar a missão, o jogo tenta obter WebGL2 primeiro; se falhar, testa WebGL1. A floresta e as chamas são feitas com `InstancedMesh`, que precisa da extensão `ANGLE_instanced_arrays` no WebGL1. A interface de erro agora distingue os casos "WebGL2 indisponível, WebGL1 disponível" e "WebGL1 e WebGL2 indisponíveis".
+
+O Microsoft Edge pode bloquear ambos os modos quando a aceleração gráfica está desabilitada ou quando políticas corporativas restringem WebGL. Consulte `edge://gpu` (linhas WebGL e WebGL2), `edge://settings/system` (usar aceleração gráfica quando disponível) e `edge://policy` (políticas impostas). As configurações gerenciadas pela empresa não devem ser contornadas.
