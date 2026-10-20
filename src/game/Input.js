@@ -42,7 +42,7 @@ export class Input {
 
   installListeners() {
     window.addEventListener('keydown', event => {
-      if (event.target instanceof HTMLElement && event.target.closest('button, input, textarea, select')) return;
+      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
       if (!this.enabled) return;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
       if (event.code === 'Escape' && this.locked) return; // Browser unlocks the cursor.

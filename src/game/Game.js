@@ -11,6 +11,7 @@ import { Wildlife } from './Wildlife.js';
 import { Atmosphere } from './Atmosphere.js';
 import { DamageFeedback } from '../ui/DamageFeedback.js';
 import { AirSupportView } from '../ui/AirSupportView.js';
+import { shouldBeginFlyby, flightCameraPose, advanceFlybyTime, FLYBY_SECONDS } from './AirCinematicLogic.js';
 import { worldMovement } from './FirstPersonLogic.js';
 import { findGraphicsContext } from './GraphicsSupport.js';
 import { findAimedFire } from './FireLogic.js';
@@ -41,7 +42,7 @@ export class Game {
     this.aimDirection = new THREE.Vector3(0, 0, -1);
     this.tempNozzle = new THREE.Vector3();
     this.input = new Input(canvas, () => this.togglePause(), () => this.onPointerUnlock());
-    this.ui = new UI({ selectDesktop: () => this.chooseDesktop(), selectMobile: () => this.chooseMobile(), backToDevice: () => this.chooseDevice(), start: () => this.start(), pause: () => this.togglePause(), resume: () => this.resume(), restart: () => this.start(), hire: () => this.purchase('hire'), municipal: () => this.purchase('municipal'), state: () => this.purchase('state') });
+    this.ui = new UI({ selectDesktop: () => this.chooseDesktop(), selectMobile: () => this.chooseMobile(), backToDevice: () => this.chooseDevice(), start: () => this.start(), pause: () => this.togglePause(), resume: () => this.resume(), restart: () => this.start(), skipAirCinematic: () => this.skipAirCinematic(), hire: () => this.purchase('hire'), municipal: () => this.purchase('municipal'), state: () => this.purchase('state') });
     this.mode = 'device';
     this.coins = 0;
     this.elapsed = 0;
@@ -51,6 +52,7 @@ export class Game {
     this.lastExtinguishedAt = -100;
     this.combo = 0;
     this.lastAirlift = { municipal: -100, state: -100 };
+    this.cinematic = null;
     this.hudClock = 0;
     this.ui.setState('device');
     this.resize();
@@ -149,7 +151,7 @@ export class Game {
     this.water = new WaterSystem(this.scene);
     await this.nextLoadStage('Preparando bombeiros, aeronaves e animais...');
     this.helpers = new Helpers(this.scene);
-    this.support = new AirSupport(this.scene, this.camera);
+    this.support = new AirSupport(this.scene);
     this.wildlife = new Wildlife(this.scene, { mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Configurando fumaça e finalizando a missão...');
     this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true, mobile: this.platform === 'mobile' });
@@ -174,10 +176,11 @@ export class Game {
     glove.position.set(.09, -.12, .20);
     hose.add(glove);
     this.camera.add(hose);
+    this.hoseModel = hose;
   }
 
   onPointerUnlock() {
-    if (this.mode !== 'playing') return;
+    if (this.mode !== 'playing' || this.cinematic?.active) return;
     this.mode = 'paused';
     this.input.clear();
     this.airView.hide();
@@ -194,6 +197,8 @@ export class Game {
     this.mode = 'error';
     this.startupError = error;
     this.airView.hide();
+    this.cinematic = null;
+    this.ui.setCinematic(false);
     this.ui.setState('error');
 
     const message = error instanceof Error ? error.message : String(error);
@@ -281,6 +286,9 @@ export class Game {
     this.lastExtinguishedAt = -100;
     this.combo = 0;
     this.lastAirlift = { municipal: -100, state: -100 };
+    this.cinematic = null;
+    this.ui.setCinematic(false);
+    if (this.hoseModel) this.hoseModel.visible = true;
     this.healthState = { health: MAX_HEALTH, smoke: 0, safeTime: 0 };
     this.input.clear();
     this.input.enabled = true;
@@ -308,6 +316,7 @@ export class Game {
 
   togglePause() {
     if (this.mode === 'playing') {
+      if (this.cinematic) this.endAirCinematic(false);
       this.mode = 'paused';
       this.input.enabled = false;
       this.input.clear();
@@ -327,7 +336,7 @@ export class Game {
   }
 
   purchase(type) {
-    if (this.mode !== 'playing') return;
+    if (this.mode !== 'playing' || this.cinematic?.active) return;
     const costs = { hire: HIRE_COST, municipal: MUNICIPAL_COST, state: STATE_COST };
     const cost = costs[type];
     if (!cost || !canBuy(this.coins, cost, this.helpers.units.length, type)) return;
@@ -338,11 +347,62 @@ export class Game {
     } else {
       if (!this.support.dispatch(type, this.fires)) return;
       this.lastAirlift[type] = this.elapsed;
-      this.ui.notify(type === 'municipal' ? 'Apoio aéreo da prefeitura a caminho!' : 'Apoio aéreo estadual mobilizado!');
+      // Wait until the actual aircraft has reached the burning area.
+      if (!this.cinematic || !this.cinematic.active) {
+        this.cinematic = { flight: this.support.active[this.support.active.length - 1], active: false, elapsed: 0 };
+      }
+      this.ui.notify(type === 'municipal' ? 'Avião da prefeitura em aproximação!' : 'Avião do estado em aproximação!');
     }
     this.coins -= cost;
     if (this.platform === 'mobile') this.ui.closeShop();
     this.refreshHUD();
+  }
+
+  /** Follow the REAL 3D aircraft above the canopy using our existing camera. */
+  updateAirCinematic(dt) {
+    const preview = this.cinematic;
+    if (!preview || this.mode !== 'playing') return;
+    const flight = preview.flight;
+    if (!this.support.active.includes(flight)) {
+      this.endAirCinematic(false);
+      return;
+    }
+    if (!preview.active) {
+      if (!shouldBeginFlyby(flight)) return;
+      preview.active = true;
+      this.input.enabled = false;
+      this.input.clear();
+      this.input.releaseLock();
+      this.ui.closeShop();
+      this.ui.setCinematic(true, flight.large ? 'AVIÃO DO ESTADO' : 'AVIÃO DA PREFEITURA');
+      this.airView.hide();
+      if (this.hoseModel) this.hoseModel.visible = false;
+    }
+    preview.elapsed = advanceFlybyTime(preview.elapsed, dt);
+    const pose = flightCameraPose(flight);
+    this.camera.position.set(pose.camera.x, pose.camera.y, pose.camera.z);
+    this.camera.lookAt(pose.target.x, pose.target.y, pose.target.z);
+    // Reveal the treetops and descending water without removing the smoke.
+    this.scene.fog.density = Math.min(this.scene.fog.density, .027);
+    if (preview.elapsed >= FLYBY_SECONDS) this.endAirCinematic(false);
+  }
+
+  endAirCinematic(relock = false) {
+    if (!this.cinematic) return;
+    this.cinematic = null;
+    this.ui.setCinematic(false);
+    if (this.hoseModel) this.hoseModel.visible = true;
+    if (this.player && this.camera) {
+      this.camera.position.set(this.player.position.x, EYE_HEIGHT, this.player.position.z);
+      this.camera.rotation.set(this.input.pitch, this.input.yaw, 0, 'YXZ');
+    }
+    this.input.clear();
+    this.input.enabled = this.mode === 'playing';
+    if (relock && this.platform === 'desktop') this.input.requestLock();
+  }
+
+  skipAirCinematic() {
+    this.endAirCinematic(true);
   }
 
   resize() {
@@ -378,6 +438,7 @@ export class Game {
 
   finish(result) {
     if (this.mode !== 'playing') return;
+    if (this.cinematic) this.endAirCinematic(false);
     this.mode = result;
     this.airView.hide();
     this.input.enabled = false;
@@ -399,8 +460,8 @@ export class Game {
   update(dt) {
     this.elapsed += dt;
     // WASD movement follows the heading, not the world axes.
-    this.input.step(dt);
-    const move = worldMovement(this.input.movement(dt), this.input.yaw);
+    if (!this.cinematic?.active) this.input.step(dt);
+    const move = this.cinematic?.active ? {x:0,z:0} : worldMovement(this.input.movement(dt), this.input.yaw);
     const moving = Math.hypot(move.x, move.z) > .08;
     if (moving) {
       const nextX = this.player.position.x + move.x * MOVE_SPEED * dt;
@@ -429,13 +490,16 @@ export class Game {
     if (this.mode !== 'playing') return;
     const airResults = this.support.update(dt, this.fires);
     this.airView.update(dt, this.support.active, this.fires.fires,
-      !this.ui.shopOpen || this.platform !== 'mobile');
+      !this.cinematic?.active && (!this.ui.shopOpen || this.platform !== 'mobile'));
     this.awardExtinguished(airResults);
     if (this.mode !== 'playing') return;
     const newFires = this.fires.spread(dt, (x, z) => this.world.canOccupy(x, z));
     if (newFires.length) this.ui.notify(`O fogo se espalhou! +${newFires.length} foco(s).`);
     const newlyLost = this.wildlife.update(dt, this.elapsed, this.fires);
     if (newlyLost) this.ui.notify(`${newlyLost} animal(is) não resistiu(ram) à fumaça ou ao fogo.`);
+    // The player cannot dodge while watching the flyover. Suspend only their
+    // damage for this short interval; the rest of the world keeps evolving.
+    if (!this.cinematic?.active) {
     const exposure = exposureAt(this.fires.fires, this.player.position);
     const surrounded = isEncircled(this.fires.fires, this.player.position);
     const oldHealth = this.healthState.health;
@@ -443,6 +507,7 @@ export class Game {
     this.damageFeedback.hit(oldHealth - this.healthState.health, exposure.directFire || surrounded);
     if (surrounded && this.healthState.health > 0 && this.elapsed % 4 < dt) this.ui.notify('Você está cercado pelo fogo! Fuja!');
     if (this.healthState.health <= 0) { this.finish('lost'); return; }
+    }
     this.hudClock += dt;
     if (this.hudClock >= .12 || newFires.length || newlyLost) { this.hudClock = 0; this.refreshHUD(); }
   }
@@ -463,6 +528,7 @@ export class Game {
       if (this.mode === 'playing') {
         this.fires.update(dt, this.elapsed);
         this.atmosphere.update(dt, this.fires, this.player.position);
+        this.updateAirCinematic(dt);
       }
     }
     this.damageFeedback.update(dt);

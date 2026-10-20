@@ -151,3 +151,31 @@
  #app[data-input-mode="mobile"] .air-support-view{top:calc(env(safe-area-inset-top) + 109px);width:200px}
  #app[data-input-mode="mobile"] .air-support-view canvas{max-height:82px}
 }
+
+/* World-space air-support flyover: one 3D camera, no aircraft fixed to the HUD. */
+.air-cinematic{
+  position:absolute;z-index:13;top:calc(env(safe-area-inset-top) + 16px);
+  left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;
+  width:max-content;max-width:calc(100vw - 24px);
+  padding:9px 12px;background:#0d2b26e8;border:1px solid #b7dfc583;
+  border-radius:8px;box-shadow:0 6px 20px #071b1880;color:#ebffdf;
+  pointer-events:none;
+}
+.air-cinematic[hidden]{display:none!important}
+.air-cinematic-copy{display:flex;flex-direction:column;gap:4px}
+.air-cinematic-copy strong{font-size:11px;letter-spacing:.11em;white-space:nowrap}
+.air-cinematic-copy span{font-size:9px;color:#9bdbc1;letter-spacing:.07em}
+.air-cinematic button{
+  border:1px solid #d7edc28e;border-radius:5px;background:#d5efb3;color:#15382a;
+  padding:10px 12px;min-height:40px;font-size:10px;font-weight:800;letter-spacing:.04em;
+  pointer-events:auto;touch-action:manipulation;white-space:nowrap;
+}
+#app[data-input-mode="mobile"] .air-cinematic{
+  top:calc(env(safe-area-inset-top) + 6px);gap:8px;padding:6px 8px;
+}
+#app[data-input-mode="mobile"] .air-cinematic-copy strong{font-size:9px}
+#app[data-input-mode="mobile"] .air-cinematic-copy span{font-size:8px}
+#app[data-input-mode="mobile"] .air-cinematic button{font-size:9px;padding:7px 9px;min-height:38px}
+@media(max-width:365px){
+  #app[data-input-mode="mobile"] .air-cinematic{left:8px;right:8px;max-width:none;transform:none;justify-content:space-between}
+}

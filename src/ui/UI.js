@@ -5,7 +5,7 @@ export class UI {
     this.elements = {
       device: $('device-screen'), mobileNotice: $('mobile-notice'), loading: $('loading-screen'), hud: $('hud'), progress: $('progress-wrap'),
       start: $('start-screen'), pause: $('pause-screen'), win: $('win-screen'), lost: $('lost-screen'),
-      tip: $('game-tip'), bottom: $('bottom-caption'), mobileControls: $('mobile-controls'), shopToggle: $('mobile-shop-toggle'), shop: $('support-shop'),
+      tip: $('game-tip'), bottom: $('bottom-caption'), cinematic: $('air-cinematic'), mobileControls: $('mobile-controls'), shopToggle: $('mobile-shop-toggle'), shop: $('support-shop'),
       count: $('fire-count'), coins: $('coin-count'), progressLabel: $('progress-label'), progressFill: $('progress-fill'),
       health: $('health-value'), healthFill: $('health-fill'), smoke: $('smoke-value'), smokeFill: $('smoke-fill'),
       saved: $('rescued-count'), lostAnimals: $('lost-count'), helpers: $('helper-count'),
@@ -27,10 +27,12 @@ export class UI {
     this.elements.state.addEventListener('click', actions.state);
     this.elements.shopToggle.addEventListener('click', () => this.toggleShop());
     $('mobile-shop-close').addEventListener('click', () => this.closeShop());
+    $('skip-air-cinematic').addEventListener('click', actions.skipAirCinematic);
     this.toastTimer = null;
     this.state = 'device';
     this.platform = 'desktop';
     this.shopOpen = false;
+    this.cinematic = false;
     this.tutorialCompleted = false;
     this.renderState();
   }
@@ -56,10 +58,15 @@ export class UI {
     this.renderShop();
   }
   renderShop() {
-    const visible = this.state === 'playing' && (this.platform === 'desktop' || this.shopOpen);
+    const visible = this.state === 'playing' && !this.cinematic && (this.platform === 'desktop' || this.shopOpen);
     this.elements.shop.hidden = !visible;
     this.elements.shopToggle.setAttribute('aria-expanded', String(this.shopOpen));
     this.elements.shopToggle.classList.toggle('is-open', this.shopOpen);
+  }
+  setCinematic(active, title = '') {
+    this.cinematic = Boolean(active);
+    if (active) $('air-cinematic-label').textContent = title;
+    this.renderState();
   }
   setState(state) {
     this.state = state;
@@ -69,9 +76,11 @@ export class UI {
   renderState() {
     const e = this.elements;
     const playing = this.state === 'playing';
+    const interacting = playing && !this.cinematic;
+    e.cinematic.hidden = !playing || !this.cinematic;
     e.device.hidden = this.state !== 'device';
     e.loading.hidden = this.state !== 'loading';
-    $('crosshair').hidden = !playing;
+    $('crosshair').hidden = !interacting;
     e.mobileNotice.hidden = true; // Both platforms now use the same mission screen.
     e.start.hidden = this.state !== 'start';
     e.pause.hidden = this.state !== 'paused';
@@ -79,11 +88,11 @@ export class UI {
     e.lost.hidden = this.state !== 'lost';
     e.hud.hidden = ['device', 'mobile', 'start', 'loading'].includes(this.state);
     $('survival-hud').hidden = !playing && this.state !== 'paused';
-    e.mobileControls.hidden = !playing || this.platform !== 'mobile';
-    e.shopToggle.hidden = !playing || this.platform !== 'mobile';
+    e.mobileControls.hidden = !interacting || this.platform !== 'mobile';
+    e.shopToggle.hidden = !interacting || this.platform !== 'mobile';
     this.renderShop();
     e.progress.hidden = !playing && this.state !== 'paused';
-    e.tip.hidden = !playing || this.tutorialCompleted;
+    e.tip.hidden = !interacting || this.tutorialCompleted;
     e.bottom.hidden = this.state !== 'start' && this.state !== 'device';
   }
   setAimTarget(aimed) {

@@ -33,7 +33,7 @@ function waterCurtain(scene, large) {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
   const mesh = new THREE.Points(geometry, new THREE.PointsMaterial({
     color: large ? 0xa2e6ff : 0x87d9fc,
-    size: large ? .56 : .37, transparent: true, opacity: .86,
+    size: large ? .85 : .63, transparent: true, opacity: .9,
     depthWrite: false, sizeAttenuation: true, fog: false,
   }));
   mesh.frustumCulled = false;
@@ -43,9 +43,8 @@ function waterCurtain(scene, large) {
 }
 
 export class AirSupport {
-  constructor(scene, camera = null) {
+  constructor(scene) {
     this.scene = scene;
-    this.camera = camera;
     this.active = [];
   }
 
@@ -58,58 +57,65 @@ export class AirSupport {
     const radius = large ? 15 : 9;
     const best = selectFlyoverLane(targets, radius);
 
-    const altitude = large ? 41 : 35; // Above the tallest canopy.
+    const altitude = large ? 33 : 29; // Just above the canopy, visible in world-space flyovers.
     const model = planeModel(large);
     model.position.set(-56, altitude, best.z);
     this.scene.add(model);
     const rain = waterCurtain(this.scene, large);
-    const preview = this.createVisibleFlyover(model, large);
+    const streaks = this.createDropStreaks(large);
     this.active.push({
-      model, rain, preview, x:-56, z:best.z, altitude, large, type,
+      model, rain, streaks, x:-56, z:best.z, altitude, large, type,
       raining:false, lastDrench:-60, flightTime:0, extinguished:0,
     });
     return true;
   }
 
-  createVisibleFlyover(model, large) {
-    if (!this.camera) return null;
-    // Reuse the exact 3D aircraft geometry in a camera-space flyby. This is
-    // rendered in the normal scene, not in a second WebGL pass. It remains
-    // visible through high canopies and smoke while the real plane fights fires.
-    const display=model.clone(true);
-    const displayMaterials=[];
-    display.traverse(object=>{
-      if(!object.isMesh)return;
-      object.material=object.material.clone();
-      object.material.depthTest=false;
-      object.material.depthWrite=false;
-      object.material.fog=false;
-      object.renderOrder=70;
-      displayMaterials.push(object.material);
-    });
-    const scale=large?.105:.15;
-    display.scale.setScalar(scale);
-    display.rotation.y=Math.PI*.22;
-    display.rotation.z=.12;
-    this.camera.add(display);
-    const count=30;
-    const positions=new Float32Array(count*3);
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
-    const water=new THREE.Points(geo,new THREE.PointsMaterial({color:0x8bdfff,size:.052,transparent:true,opacity:.91,depthTest:false,depthWrite:false,sizeAttenuation:true,fog:false}));
-    water.renderOrder=71;
-    water.visible=false;
-    this.camera.add(water);
-    return {model:display,water,positions,attribute:geo.attributes.position,materials:displayMaterials};
+  /** One lightweight LineSegments object per flight: an actual world-space water curtain. */
+  createDropStreaks(large) {
+    const count = 14;
+    const positions = new Float32Array(count * 6);
+    const geometry = new THREE.BufferGeometry();
+    const attribute = new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('position', attribute);
+    const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+      color: large ? 0xaeeaff : 0x84dfff,
+      transparent: true,
+      opacity: .67,
+      depthWrite: false,
+      fog: false,
+    }));
+    lines.frustumCulled = false;
+    lines.visible = false;
+    this.scene.add(lines);
+    return { lines, positions, attribute, count };
+  }
+
+  updateDropStreaks(flight) {
+    const streaks = flight.streaks;
+    streaks.lines.visible = flight.raining;
+    if (!flight.raining) return;
+    for (let i = 0; i < streaks.count; i++) {
+      const phase = (flight.flightTime * 2.8 + i * .173) % 1;
+      const w = (i % 7 - 3) / 3;
+      const side = (flight.large ? 11 : 6) * w;
+      const y = flight.altitude - 1.8 - phase * (flight.altitude - 3.5);
+      const at = i * 6;
+      const x = flight.x - 2.5 - phase * 3;
+      const z = flight.z + side;
+      streaks.positions[at] = x;
+      streaks.positions[at + 1] = y;
+      streaks.positions[at + 2] = z;
+      streaks.positions[at + 3] = x - .45;
+      streaks.positions[at + 4] = Math.max(.4, y - 2.5);
+      streaks.positions[at + 5] = z + .28;
+    }
+    streaks.attribute.needsUpdate = true;
   }
 
   disposeFlight(flight) {
-    if(flight.preview){
-      this.camera.remove(flight.preview.model,flight.preview.water);
-      for(const mat of flight.preview.materials)mat.dispose();
-      flight.preview.water.geometry.dispose();
-      flight.preview.water.material.dispose();
-    }
+    this.scene.remove(flight.streaks.lines);
+    flight.streaks.lines.geometry.dispose();
+    flight.streaks.lines.material.dispose();
     this.scene.remove(flight.model, flight.rain.mesh);
     const materials = new Set();
     flight.model.traverse(object => {
@@ -128,28 +134,6 @@ export class AirSupport {
     this.active.length = 0;
   }
 
-  updateVisibleFlyover(flight) {
-    const preview=flight.preview;
-    if(!preview)return;
-    // The real world-aircraft remains responsible for every extinguish event.
-    // The synchronized camera-space 3D flyby guarantees visual feedback.
-    const fraction=Math.max(0,Math.min(1,flight.flightTime/8.5));
-    const y=flight.large?.88:.59;
-    const x=-1.34+2.68*fraction;
-    preview.model.position.set(x,y,-3.2);
-    preview.model.rotation.x=Math.sin(flight.flightTime*1.6)*.045;
-    preview.water.visible=flight.raining && fraction<.99;
-    if(!preview.water.visible)return;
-    for(let i=0;i<30;i++){
-      const t=(i/30+flight.flightTime*.9)%1;
-      const p=i*3;
-      preview.positions[p]=x-.08-t*.36+Math.sin(i*2.27)*.06;
-      preview.positions[p+1]=y-.18-t*(flight.large?1.0:.78);
-      preview.positions[p+2]=-3.2+.03*Math.sin(i*4.1);
-    }
-    preview.attribute.needsUpdate=true;
-  }
-
   update(dt, fires) {
     const completed = [];
     for (let i = this.active.length - 1; i >= 0; i--) {
@@ -159,7 +143,7 @@ export class AirSupport {
       flight.model.position.y = flight.altitude + Math.sin(flight.flightTime * 2.1) * .22;
       flight.model.rotation.z = Math.sin(flight.flightTime * 1.65) * .025;
       flight.rain.mesh.visible = flight.raining;
-      this.updateVisibleFlyover(flight);
+      this.updateDropStreaks(flight);
 
       if (flight.raining) {
         const positions = flight.rain.positions;
