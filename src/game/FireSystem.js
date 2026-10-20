@@ -3,19 +3,21 @@ import { FIRE_POSITIONS } from './World.js';
 import { FIRE_HEALTH, applyWater, applyWaterArea, findNearestFire } from './FireLogic.js';
 import { validSpreadPosition } from './SurvivalLogic.js';
 import { getSmokeTexture } from './Atmosphere.js';
+import { TreeFlames } from './TreeFlames.js';
 
-const CAPACITY = 42;
+const CAPACITY = 48;
 const dummy = new THREE.Object3D();
 const RAND_OFFSETS = [.15, 2.35, 4.5, 1.1, 5.3, 3.4, .8, 4.1];
 
 export class FireSystem {
-  constructor(scene) {
+  constructor(scene, trees = [], mobile = false) {
     this.fires = [];
     this.group = new THREE.Group();
     this.activeCount = 0;
     scene.add(this.group);
     this.layers = [];
     this.createVisuals();
+    this.treeFlames=new TreeFlames(scene,trees,{mobile});
     this.reset();
   }
 
@@ -40,7 +42,7 @@ export class FireSystem {
 
   addFire(x, z, generation = 0) {
     if (this.fires.length >= CAPACITY) return false;
-    const fire = { x, z, health: FIRE_HEALTH, active: true, generation, age: 0, spreadAt: 13 + (this.fires.length * 7 % 12), attempts: 0 };
+    const fire = { x, z, health: FIRE_HEALTH, active: true, generation, age: 0, spreadAt: 11 + (this.fires.length * 7 % 9), attempts: 0 };
     this.fires.push(fire);
     this.activeCount++;
     return fire;
@@ -50,6 +52,7 @@ export class FireSystem {
     this.fires.length = 0;
     this.activeCount = 0;
     FIRE_POSITIONS.forEach(([x, z]) => this.addFire(x, z));
+    this.treeFlames.reset();
     this.update(0, 0);
   }
 
@@ -134,5 +137,6 @@ export class FireSystem {
     this.scorch.instanceMatrix.needsUpdate = true;
     for (const mesh of this.layers) mesh.instanceMatrix.needsUpdate = true;
     this.smoke.geometry.attributes.position.needsUpdate = true;
+    this.treeFlames.update(delta,elapsed,this.fires);
   }
 }

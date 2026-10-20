@@ -140,6 +140,6 @@ export class UI {
     document.getElementById('crosshair').classList.remove('is-target');
     this.elements.toast.classList.remove('visible');
     this.closeShop();
-    this.setProgress(12, 12, 0);
+    this.setProgress(18, 18, 0);
   }
 }

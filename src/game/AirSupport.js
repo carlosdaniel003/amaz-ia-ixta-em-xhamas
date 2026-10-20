@@ -43,8 +43,9 @@ function waterCurtain(scene, large) {
 }
 
 export class AirSupport {
-  constructor(scene) {
+  constructor(scene, camera = null) {
     this.scene = scene;
+    this.camera = camera;
     this.active = [];
   }
 
@@ -62,14 +63,53 @@ export class AirSupport {
     model.position.set(-56, altitude, best.z);
     this.scene.add(model);
     const rain = waterCurtain(this.scene, large);
+    const preview = this.createVisibleFlyover(model, large);
     this.active.push({
-      model, rain, x:-56, z:best.z, altitude, large, type,
+      model, rain, preview, x:-56, z:best.z, altitude, large, type,
       raining:false, lastDrench:-60, flightTime:0, extinguished:0,
     });
     return true;
   }
 
+  createVisibleFlyover(model, large) {
+    if (!this.camera) return null;
+    // Reuse the exact 3D aircraft geometry in a camera-space flyby. This is
+    // rendered in the normal scene, not in a second WebGL pass. It remains
+    // visible through high canopies and smoke while the real plane fights fires.
+    const display=model.clone(true);
+    const displayMaterials=[];
+    display.traverse(object=>{
+      if(!object.isMesh)return;
+      object.material=object.material.clone();
+      object.material.depthTest=false;
+      object.material.depthWrite=false;
+      object.material.fog=false;
+      object.renderOrder=70;
+      displayMaterials.push(object.material);
+    });
+    const scale=large?.105:.15;
+    display.scale.setScalar(scale);
+    display.rotation.y=Math.PI*.22;
+    display.rotation.z=.12;
+    this.camera.add(display);
+    const count=30;
+    const positions=new Float32Array(count*3);
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
+    const water=new THREE.Points(geo,new THREE.PointsMaterial({color:0x8bdfff,size:.052,transparent:true,opacity:.91,depthTest:false,depthWrite:false,sizeAttenuation:true,fog:false}));
+    water.renderOrder=71;
+    water.visible=false;
+    this.camera.add(water);
+    return {model:display,water,positions,attribute:geo.attributes.position,materials:displayMaterials};
+  }
+
   disposeFlight(flight) {
+    if(flight.preview){
+      this.camera.remove(flight.preview.model,flight.preview.water);
+      for(const mat of flight.preview.materials)mat.dispose();
+      flight.preview.water.geometry.dispose();
+      flight.preview.water.material.dispose();
+    }
     this.scene.remove(flight.model, flight.rain.mesh);
     const materials = new Set();
     flight.model.traverse(object => {
@@ -88,6 +128,28 @@ export class AirSupport {
     this.active.length = 0;
   }
 
+  updateVisibleFlyover(flight) {
+    const preview=flight.preview;
+    if(!preview)return;
+    // The real world-aircraft remains responsible for every extinguish event.
+    // The synchronized camera-space 3D flyby guarantees visual feedback.
+    const fraction=Math.max(0,Math.min(1,flight.flightTime/8.5));
+    const y=flight.large?.88:.59;
+    const x=-1.34+2.68*fraction;
+    preview.model.position.set(x,y,-3.2);
+    preview.model.rotation.x=Math.sin(flight.flightTime*1.6)*.045;
+    preview.water.visible=flight.raining && fraction<.99;
+    if(!preview.water.visible)return;
+    for(let i=0;i<30;i++){
+      const t=(i/30+flight.flightTime*.9)%1;
+      const p=i*3;
+      preview.positions[p]=x-.08-t*.36+Math.sin(i*2.27)*.06;
+      preview.positions[p+1]=y-.18-t*(flight.large?1.0:.78);
+      preview.positions[p+2]=-3.2+.03*Math.sin(i*4.1);
+    }
+    preview.attribute.needsUpdate=true;
+  }
+
   update(dt, fires) {
     const completed = [];
     for (let i = this.active.length - 1; i >= 0; i--) {
@@ -97,6 +159,7 @@ export class AirSupport {
       flight.model.position.y = flight.altitude + Math.sin(flight.flightTime * 2.1) * .22;
       flight.model.rotation.z = Math.sin(flight.flightTime * 1.65) * .025;
       flight.rain.mesh.visible = flight.raining;
+      this.updateVisibleFlyover(flight);
 
       if (flight.raining) {
         const positions = flight.rain.positions;

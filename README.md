@@ -30,7 +30,7 @@ Não abra `index.html` diretamente com `file://`, pois navegadores restringem m�
 | Celular/tablet | Reforços | Tocar em **◈ REFORÇOS** e comprar no painel |
 | Celular/tablet | Pausar e retomar | Botão de pausa no topo e **Continuar** |
 
-**Objetivo:** apagar todos os focos de incêndio sem morrer. O cenário começa com 12 focos, que se propagam gradualmente até um limite de 42. Cada foco extinto concede 30 moedas mais um bônus por sequência de extinções rápidas. Contato direto com fogo causa dano; respirar fumaça eleva o indicador de intoxicação e pode causar perda de vida. A vida se regenera após alguns segundos fora do perigo, com baixa exposição à fumaça. Focos que cercam o personagem aceleram os danos. Animais podem ser resgatados ao apagar incêndios próximos; alguns já foram encontrados mortos e outros podem morrer por fogo ou fumaça caso a missão demore.
+**Objetivo:** apagar todos os focos de incêndio sem morrer. O cenário começa com 18 focos, que se propagam gradualmente até um limite de 48. Cada foco extinto concede 30 moedas mais um bônus por sequência de extinções rápidas. Contato direto com fogo causa dano; respirar fumaça eleva o indicador de intoxicação e pode causar perda de vida. A vida se regenera após alguns segundos fora do perigo, com baixa exposição à fumaça. Focos que cercam o personagem aceleram os danos. Animais podem ser resgatados ao apagar incêndios próximos; alguns já foram encontrados mortos e outros podem morrer por fogo ou fumaça caso a missão demore.
 
 ## Estrutura
 
@@ -124,3 +124,12 @@ Arraste a região livre do lado direito para colocar a cruz central sobre o fogo
 - As solicitações à prefeitura e ao estado criam modelos 3D diferentes de aeronaves. Ambos cruzam a floresta acima das copas. O avião estadual tem maior porte e área de lançamento.
 - Cada avião abre uma pequena **visão aérea tática** em Canvas 2D, com os aviões em movimento, os focos ativos, a cortina de água e o contador de focos efetivamente apagados. Ela não abre uma segunda câmera 3D e pode ser ocultada enquanto o painel de compras está aberto no celular.
 - A queda de água no cenário usa apenas 48 pontos reaproveitados por avião. Os danos aplicados vêm de `AirSupport.drench`, e a visualização aérea consulta os mesmos incêndios; não são efeitos independentes ou apenas decorativos.
+
+## Atualização: Amazônia sob fumaça intensa
+
+- O limite jogável continua em `MAP_RADIUS = 43`, mas o fundo é agora um **panorama panorâmico 2D** criado uma só vez, com silhuetas de floresta amazônica, fumaça estratificada e céu acinzentado; o cilindro distante não gera milhares de árvores 3D.
+- O terreno foi ampliado visualmente e os tons de terra, samambaias, arbustos, palmeiras e copas foram desaturados para representar vegetação sob forte estiagem. O projeto não pretende simular meteorologia em tempo real.
+- Os focos iniciais aumentaram para 18 (capacidade máxima 48). O sistema `TreeFlames` reaproveita duas malhas instanciadas: chama em até 12 árvores no celular ou 22 no desktop, sempre perto de focos ativos. A chama desaparece quando o incêndio correspondente é extinto.
+- A fauna utiliza **14 espécies amazônicas** identificáveis por ilustrações de silhueta 2.5D: onça-pintada, anta, queixada, caititu, paca, cutia, macaco-aranha, macaco-guariba, preguiça-de-três-dedos, arara-vermelha, arara-canindé, tucano-de-papo-branco, mutum-cavalo e sucuri-verde. Até 22 animais no mobile e 28 no desktop, dos quais quatro são vítimas iniciais, com novas vítimas possíveis conforme exposição à fumaça e às chamas. Animais próximos aos focos fogem; podem ser resgatados ao apagar incêndios próximos. Sem violência gráfica.
+- Os aviões mantêm seus **voos 3D reais** sobre os focos e a água aplicada nos incêndios. Além da vista tática 2D, há uma **passagem de exibição de avião 3D na própria câmera**, sincronizada com o reforço, para que a aeronave e sua água sejam vistas mesmo entre copas altas. A passagem usa as mesmas geometrias básicas, sem segunda câmera ou segundo render.
+- A névoa permanece calculada com `FogExp2`, com partículas de fumaça recicladas (16 no celular). O horizonte usa somente uma textura de Canvas gerada na inicialização, e o fogo das árvores usa instancing para preservar desempenho.

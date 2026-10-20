@@ -122,9 +122,9 @@ export class Game {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = .97;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x504940);
-    this.scene.fog = new THREE.FogExp2(0x504940, .035);
-    this.scene.add(new THREE.HemisphereLight(0xb9b6a0, 0x1c2920, 1.4));
+    this.scene.background = new THREE.Color(0x696059);
+    this.scene.fog = new THREE.FogExp2(0x8b8177, .043);
+    this.scene.add(new THREE.HemisphereLight(0xa59d91, 0x28281f, 1.17));
     const sun = new THREE.DirectionalLight(0xf1ad7c, .85);
     sun.position.set(-14, 27, 10);
     this.scene.add(sun);
@@ -145,12 +145,12 @@ export class Game {
     await this.nextLoadStage('Preparando personagem, focos e mangueira...');
     this.player = new Player(this.scene);
     this.player.root.visible = false;
-    this.fires = new FireSystem(this.scene);
+    this.fires = new FireSystem(this.scene, this.world.trees, this.platform === 'mobile');
     this.water = new WaterSystem(this.scene);
     await this.nextLoadStage('Preparando bombeiros, aeronaves e animais...');
     this.helpers = new Helpers(this.scene);
-    this.support = new AirSupport(this.scene);
-    this.wildlife = new Wildlife(this.scene);
+    this.support = new AirSupport(this.scene, this.camera);
+    this.wildlife = new Wildlife(this.scene, { mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Configurando fumaça e finalizando a missão...');
     this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true, mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Entrando na floresta...');

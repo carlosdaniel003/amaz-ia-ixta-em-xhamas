@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { createSmokeHorizon } from './Horizon.js';
 
 export const MAP_RADIUS = 43;
 export const FIRE_POSITIONS = Object.freeze([
   [-12, -10], [11, -14], [-24, 8], [3, 23], [23, 10], [23, -23],
   [-9, 25], [-27, -21], [33, -7], [-23, 29], [32, 28], [0, -32],
+  [-35, 14], [14, 34], [35, 15], [-34, -8], [6, -22], [18, 3],
 ]);
 
 const dummy = new THREE.Object3D();
@@ -32,13 +34,14 @@ export class World {
     this.obstacles = [];
     scene.add(this.group);
     this.generate();
+    this.horizon = createSmokeHorizon(scene);
   }
 
   generate() {
     const rng = randomGenerator(8531);
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(115, 115),
-      new THREE.MeshLambertMaterial({ color: 0x293b2b }),
+      new THREE.PlaneGeometry(160, 160),
+      new THREE.MeshLambertMaterial({ color: 0x403c2c }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.07;
@@ -47,7 +50,7 @@ export class World {
     // Keep scenery procedural and batched: a handful of draw calls, even with hundreds of props.
     const patches = new THREE.InstancedMesh(
       new THREE.CircleGeometry(1, 9),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.49, depthWrite: false }),
       this.mobile ? 60 : this.lowPerformance ? 90 : 160,
     );
     for (let i = 0; i < patches.count; i++) {
@@ -58,7 +61,7 @@ export class World {
       dummy.scale.set(1.1 + rng() * 4, 0.8 + rng() * 3, 1);
       dummy.updateMatrix();
       patches.setMatrixAt(i, dummy.matrix);
-      patches.setColorAt(i, new THREE.Color().setHSL(0.11 + rng() * .18, .31, .11 + rng() * .15));
+      patches.setColorAt(i, new THREE.Color().setHSL(0.08 + rng() * .08, .34, .13 + rng() * .12));
     }
     patches.instanceMatrix.needsUpdate = true;
     this.group.add(patches);
@@ -88,7 +91,7 @@ export class World {
       dummy.updateMatrix();
       shadows.setMatrixAt(i, dummy.matrix);
       trunk.setColorAt(i, new THREE.Color().setHSL(.073 + tree.seed * .023, .33, .23 + tree.seed * .12));
-      const color = new THREE.Color().setHSL(.31 + tree.seed * .09, .48 + tree.seed * .25, .23 + tree.seed * .17);
+      const color = new THREE.Color().setHSL(.21 + tree.seed * .085, .26 + tree.seed * .23, .22 + tree.seed * .14);
       crown.setColorAt(i * 2, color);
       crown.setColorAt(i * 2 + 1, color.clone().multiplyScalar(1.08));
     });
@@ -110,7 +113,7 @@ export class World {
       const z = (rng() - .5) * 105;
       const size = .25 + rng() * .62;
       instance(shrubs, i, x, size * .50, z, size * 1.5, size, size * 1.1, rng() * 6);
-      shrubs.setColorAt(i, new THREE.Color().setHSL(.27 + rng() * .1, .43, .13 + rng() * .16));
+      shrubs.setColorAt(i, new THREE.Color().setHSL(.17 + rng() * .14, .28, .16 + rng() * .15));
     }
     shrubs.instanceMatrix.needsUpdate = true;
     shrubs.computeBoundingSphere();
@@ -127,7 +130,7 @@ export class World {
       for (let j = 0; j < 6; j++) {
         const a = j * Math.PI / 3 + i * .5;
         instance(leaves, i * 6 + j, x + Math.cos(a) * 1.1, h - .35, z + Math.sin(a) * 1.1, 2.2, .25, .68, a);
-        leaves.setColorAt(i * 6 + j, new THREE.Color().setHSL(.27 + rng() * .08, .46, .14 + rng() * .15));
+        leaves.setColorAt(i * 6 + j, new THREE.Color().setHSL(.17 + rng() * .14, .33, .20 + rng() * .1));
       }
     }
     for (let i = 0; i < vines.count; i++) {
@@ -143,7 +146,7 @@ export class World {
       for (let j = 0; j < 4; j++) {
         const a = j * Math.PI / 2 + i * .8;
         instance(ferns, i * 4 + j, x + Math.cos(a) * size * .5, size * .58, z + Math.sin(a) * size * .5, size * 1.2, size * .26, size * .44, a);
-        ferns.setColorAt(i * 4 + j, new THREE.Color().setHSL(.28 + rng() * .08, .49, .14 + rng() * .16));
+        ferns.setColorAt(i * 4 + j, new THREE.Color().setHSL(.18 + rng() * .13, .32, .18 + rng() * .13));
       }
     }
     ferns.frustumCulled = true; ferns.instanceMatrix.needsUpdate = true; ferns.computeBoundingSphere(); this.group.add(ferns);

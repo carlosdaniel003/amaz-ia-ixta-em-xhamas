@@ -34,22 +34,22 @@ export class Atmosphere {
     this.lowPerformance = lowPerformance || mobile;
     this.mobile = mobile;
     this.elapsed = 0;
-    this.clouds = makeClouds(mobile ? 12 : mobile ? 12 : lowPerformance ? 18 : 56, new THREE.PointsMaterial({
-      map: getSmokeTexture(), color: 0x81796e, size: 6.5, opacity: .33,
+    this.clouds = makeClouds(mobile ? 16 : lowPerformance ? 20 : 56, new THREE.PointsMaterial({
+      map: getSmokeTexture(), color: 0x968a80, size: 7.8, opacity: .34,
       transparent: true, depthWrite: false, alphaTest: .01, sizeAttenuation: true,
     }));
-    this.embers = makeClouds(mobile ? 8 : mobile ? 8 : lowPerformance ? 14 : 36, new THREE.PointsMaterial({
+    this.embers = makeClouds(mobile ? 10 : lowPerformance ? 16 : 36, new THREE.PointsMaterial({
       color: 0xff9d59, size: .15, opacity: .66, transparent: true,
       depthWrite: false, sizeAttenuation: true,
     }));
     this.glow = new THREE.PointLight(0xff673b, 2.1, 13, 2);
     scene.add(this.clouds.mesh, this.embers.mesh, this.glow);
     // Stable procedural offsets, with no random allocation in the render loop.
-    this.cloudData = Array.from({ length: lowPerformance ? 18 : 56 }, (_, i) => ({
+    this.cloudData = Array.from({ length: mobile ? 16 : lowPerformance ? 20 : 56 }, (_, i) => ({
       anchor: i % 12, x: Math.sin(i * 5.31) * 7, z: Math.cos(i * 4.17) * 7,
       height: (i * 3.7) % 17, rate: .45 + (i % 7) * .19,
     }));
-    this.emberData = Array.from({ length: lowPerformance ? 14 : 36 }, (_, i) => ({
+    this.emberData = Array.from({ length: mobile ? 10 : lowPerformance ? 16 : 36 }, (_, i) => ({
       anchor: i % 12, x: Math.sin(i * 8.17) * 5, z: Math.cos(i * 7.33) * 5,
       height: (i * 2.7) % 8, rate: .6 + (i % 6) * .15,
     }));
@@ -68,10 +68,10 @@ export class Atmosphere {
   update(dt, fires, player) {
     this.elapsed += dt;
     const active = fires.fires.filter(fire => fire.active);
-    const strength = Math.min(1, active.length / 12);
-    const targetDensity = .019 + strength * .016;
+    const strength = Math.min(1, active.length / 18);
+    const targetDensity = .027 + strength * .017;
     this.scene.fog.density += (targetDensity - this.scene.fog.density) * Math.min(1, dt * .7);
-    this.clouds.mesh.material.opacity = .10 + strength * .24;
+    this.clouds.mesh.material.opacity = .18 + strength * .23;
     this.embers.mesh.material.opacity = .08 + strength * .58;
     const t = this.elapsed;
     for (let i = 0; i < this.cloudData.length; i++) {
