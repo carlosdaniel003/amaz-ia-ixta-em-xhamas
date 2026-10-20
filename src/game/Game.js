@@ -9,6 +9,7 @@ import { Helpers } from './Helpers.js';
 import { AirSupport } from './AirSupport.js';
 import { Wildlife } from './Wildlife.js';
 import { Atmosphere } from './Atmosphere.js';
+import { DenseSmoke } from './DenseSmoke.js';
 import { DamageFeedback } from '../ui/DamageFeedback.js';
 import { AirSupportView } from '../ui/AirSupportView.js';
 import { shouldBeginFlyby, flightCameraPose, advanceFlybyTime, FLYBY_SECONDS } from './AirCinematicLogic.js';
@@ -139,7 +140,7 @@ export class Game {
 
   /** Build the world over multiple paints instead of blocking the tab in one callback. */
   async initializeGraphics() {
-    if (this.renderer && this.world && this.atmosphere) return;
+    if (this.renderer && this.world && this.atmosphere && this.denseSmoke) return;
     await this.nextLoadStage('Verificando WebGL2 e preparando a câmera...');
     this.createRenderer();
     await this.nextLoadStage('Construindo árvores e caminhos da floresta...');
@@ -155,6 +156,7 @@ export class Game {
     this.wildlife = new Wildlife(this.scene, { mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Configurando fumaça e finalizando a missão...');
     this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true, mobile: this.platform === 'mobile' });
+    this.denseSmoke = new DenseSmoke(this.scene, { mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Entrando na floresta...');
   }
 
@@ -300,6 +302,7 @@ export class Game {
     this.airView.hide();
     this.wildlife.reset();
     this.atmosphere.reset();
+    this.denseSmoke.reset();
     this.damageFeedback.reset();
     this.ui.reset();
     this.ui.setState('playing');
@@ -528,6 +531,7 @@ export class Game {
       if (this.mode === 'playing') {
         this.fires.update(dt, this.elapsed);
         this.atmosphere.update(dt, this.fires, this.player.position);
+        this.denseSmoke.update(dt, this.fires.fires, this.player.position, this.elapsed);
         this.updateAirCinematic(dt);
       }
     }

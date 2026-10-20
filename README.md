@@ -143,3 +143,10 @@ Arraste a região livre do lado direito para colocar a cruz central sobre o fogo
 - A sequência não causa dano inevitável ao jogador temporariamente sem controle, mas o combate dos aliados, os voos, as chamas e a fauna continuam atualizando.
 - Altitudes reduzidas para 29 m (prefeitura) e 33 m (estado), acima da maioria das copas. O jato de água mantém partículas reaproveitadas e acrescenta apenas **um objeto LineSegments com 14 traços** por aeronave. A sequência cinematográfica não cria outra câmera nem outra renderização por frame.
 - A vista tática 2D permanece para acompanhamento fora da sequência; esconde-se durante o sobrevoo 3D para não competir com o cenário.
+
+
+## Fumaça densa ligada às áreas de exposição
+
+A fumaça atmosférica existente (céu, névoa, colunas e brasas) permanece **inalterada**. Uma camada adicional `DenseSmoke` mostra nuvens **mais baixas e escuras** ao redor de incêndios ativos, ajudando o jogador a identificar e evitar áreas onde a fumaça eleva a intoxicação. O posicionamento utiliza o mesmo `SMOKE_RADIUS = 8` do sistema de sobrevivência; quando um foco é apagado, suas nuvens perigosas deixam de aparecer.
+
+A nova camada usa a mesma textura de fumaça já carregada, apenas **um objeto `THREE.Points`** e um buffer reaproveitado de até **72 partículas no celular** (108 no desktop), atualizado a cada 0,14 s. Não foram adicionados efeitos de pós-processamento, gradientes de risco, avisos de tela, novas regras de dano ou alterações na névoa original. Como antes, a intoxicação acumulada pode continuar causando dano por um curto período mesmo após o personagem sair da nuvem, até o medidor diminuir.
