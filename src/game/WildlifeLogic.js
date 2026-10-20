@@ -37,3 +37,18 @@ export function escapeDirection(animal, fires) {
   const dx=animal.x||1, dz=animal.z||1, distance=Math.max(.01,Math.hypot(dx,dz));
   return {x:dx/distance,z:dz/distance};
 }
+
+/** A calm animal wanders around a small home area; birds never hover in place. */
+export function roamDirection(position, elapsed, phase, homeX, homeZ) {
+  const toHomeX=homeX-position.x;
+  const toHomeZ=homeZ-position.z;
+  const distance=Math.hypot(toHomeX,toHomeZ);
+  let angle=elapsed*.38+phase;
+  let dx=Math.cos(angle),dz=Math.sin(angle);
+  if(distance>7){dx=toHomeX/distance;dz=toHomeZ/distance;}
+  // The soft boundary prevents wandering wildlife from getting stuck at the edge.
+  if(Math.abs(position.x)>38) dx=-Math.sign(position.x);
+  if(Math.abs(position.z)>38) dz=-Math.sign(position.z);
+  const length=Math.max(.001,Math.hypot(dx,dz));
+  return {x:dx/length,z:dz/length};
+}

@@ -145,7 +145,7 @@ export class World {
       const x = (rng() - .5) * 104, z = (rng() - .5) * 104, size = .7 + rng() * .8;
       for (let j = 0; j < 4; j++) {
         const a = j * Math.PI / 2 + i * .8;
-        instance(ferns, i * 4 + j, x + Math.cos(a) * size * .5, size * .58, z + Math.sin(a) * size * .5, size * 1.2, size * .26, size * .44, a);
+        instance(ferns, i * 4 + j, x + Math.cos(a) * size * .5, -.025 + size * .09, z + Math.sin(a) * size * .5, size * 1.2, size * .14, size * .44, a);
         ferns.setColorAt(i * 4 + j, new THREE.Color().setHSL(.18 + rng() * .13, .32, .18 + rng() * .13));
       }
     }

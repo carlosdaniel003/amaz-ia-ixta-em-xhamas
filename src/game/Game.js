@@ -15,7 +15,6 @@ import { AirSupportView } from '../ui/AirSupportView.js';
 import { shouldBeginFlyby, flightCameraPose, advanceFlybyTime, FLYBY_SECONDS } from './AirCinematicLogic.js';
 import { worldMovement } from './FirstPersonLogic.js';
 import { findGraphicsContext } from './GraphicsSupport.js';
-import { findAimedFire } from './FireLogic.js';
 import { MAX_HEALTH, HIRE_COST, MUNICIPAL_COST, STATE_COST, MAX_HELPERS, exposureAt, isEncircled, advanceSurvival, extinguishReward, canBuy } from './SurvivalLogic.js';
 
 const MOVE_SPEED = 8.5;
@@ -480,10 +479,10 @@ export class Game {
     this.camera.getWorldDirection(this.aimDirection);
     this.camera.localToWorld(this.tempNozzle.set(.32, -.27, -.9));
 
-    const hit = findAimedFire(this.fires.fires, this.camera.position, this.aimDirection);
+    const hit = this.fires.aim(this.camera.position, this.aimDirection);
     this.ui.setAimTarget(Boolean(hit));
     const spraying = this.input.spraying;
-    if (spraying) this.awardExtinguished(this.fires.spray(this.camera.position, this.aimDirection, dt));
+    if (spraying) this.awardExtinguished(this.fires.spray(this.camera.position, this.aimDirection, dt, 1, hit));
     // Visual jet terminates at the same aimed focus used by FireLogic.
     this.water.update(dt, spraying, this.camera.position, this.tempNozzle,
       this.aimDirection, hit);
@@ -529,7 +528,7 @@ export class Game {
     if (this.mode === 'playing') {
       this.update(dt);
       if (this.mode === 'playing') {
-        this.fires.update(dt, this.elapsed);
+        this.fires.update(dt, this.elapsed, this.player.position);
         this.atmosphere.update(dt, this.fires, this.player.position);
         this.denseSmoke.update(dt, this.fires.fires, this.player.position, this.elapsed);
         this.updateAirCinematic(dt);

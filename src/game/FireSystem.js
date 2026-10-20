@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FIRE_POSITIONS } from './World.js';
-import { FIRE_HEALTH, applyWater, applyWaterArea, findNearestFire } from './FireLogic.js';
+import { FIRE_HEALTH, findAimedFire, applyWater, applyWaterArea, findNearestFire } from './FireLogic.js';
+import { applyWaterToTreeFire } from './TreeFireLogic.js';
 import { validSpreadPosition } from './SurvivalLogic.js';
 import { getSmokeTexture } from './Atmosphere.js';
 import { TreeFlames } from './TreeFlames.js';
@@ -56,7 +57,19 @@ export class FireSystem {
     this.update(0, 0);
   }
 
-  spray(position, direction, dt, multiplier = 1) {
+  aim(position, direction) {
+    const ground = findAimedFire(this.fires, position, direction);
+    const tree = this.treeFlames.aimedFire(position, direction);
+    if (tree && (!ground || tree.distance < ground.distance)) return tree;
+    return ground;
+  }
+
+  spray(position, direction, dt, multiplier = 1, aimedHit = null) {
+    if (aimedHit?.tree) {
+      const completed = applyWaterToTreeFire(aimedHit, dt, multiplier);
+      this.activeCount -= completed.length;
+      return completed;
+    }
     const completed = applyWater(this.fires, position, direction, dt, multiplier);
     this.activeCount -= completed.length;
     return completed;
@@ -96,7 +109,7 @@ export class FireSystem {
     return newFires;
   }
 
-  update(delta, elapsed) {
+  update(delta, elapsed, player = null) {
     this.smokePositions.fill(-100);
     for (let f = 0; f < CAPACITY; f++) {
       const fire = this.fires[f];
@@ -137,6 +150,6 @@ export class FireSystem {
     this.scorch.instanceMatrix.needsUpdate = true;
     for (const mesh of this.layers) mesh.instanceMatrix.needsUpdate = true;
     this.smoke.geometry.attributes.position.needsUpdate = true;
-    this.treeFlames.update(delta,elapsed,this.fires);
+    this.treeFlames.update(delta,elapsed,this.fires,player);
   }
 }

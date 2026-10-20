@@ -22,7 +22,8 @@ function planeModel(large) {
   mesh(new THREE.BoxGeometry(1.3 * scale, .12 * scale, 4.9 * scale), stripe, -3, .35, 0);
   mesh(new THREE.BoxGeometry(.8 * scale, 1.5 * scale, .13 * scale), stripe, -3, .95, 0);
   mesh(new THREE.BoxGeometry(.95 * scale, .55 * scale, 1.25 * scale), stripe, 2.25, .22, 0);
-  root.rotation.y = Math.PI;
+  // Nose/cockpit at +X: flights travel -X to +X. A 180° yaw made them fly backward.
+  root.rotation.y = 0;
   return root;
 }
 

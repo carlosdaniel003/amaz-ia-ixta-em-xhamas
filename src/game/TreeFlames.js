@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { burningTrees, treeFlamePositions, findAimedTreeFire } from './TreeFireLogic.js';
 
-/** Batched orange flames on trees near active fires; purely decorative. */
+/** Batched flames on actual burning trees; each flame can be aimed at. */
 export class TreeFlames {
   constructor(scene, trees=[], {mobile=false}={}) {
     this.trees=trees;
@@ -21,30 +22,35 @@ export class TreeFlames {
     });
     this.object=new THREE.Object3D();
     this.elapsed=0;
+    this.targets=[];
   }
 
   reset() {
     this.elapsed=0;
+    this.targets=[];
     for(const mesh of this.meshes)mesh.count=0;
   }
 
-  update(dt, elapsed, fires) {
+  aimedFire(position, direction) {
+    return findAimedTreeFire(this.targets, position, direction);
+  }
+
+  update(dt, elapsed, fires, player = null) {
     this.elapsed+=dt;
     if(this.elapsed<.16)return;
     this.elapsed=0;
-    const burning=fires.filter(f=>f.active);
-    let index=0;
-    const matrix=this.object;
-    for(const tree of this.trees){
-      if(index>=this.limit)break;
-      const hit=burning.some(f=>(f.x-tree.x)**2+(f.z-tree.z)**2<100);
-      if(!hit)continue;
-      for(let layer=0;layer<2;layer++){
+    this.targets = burningTrees(this.trees, fires, this.limit, player);
+    const matrix = this.object;
+    let index = 0;
+    for (const {tree, fire} of this.targets) {
+      if (!fire.active) continue;
+      const anchors = treeFlamePositions(tree);
+      for (let layer=0;layer<2;layer++) {
         const mesh=this.meshes[layer];
-        for(let part=0;part<2;part++){
-          const base=tree.height*(part===0?.30:.72);
+        for (let part=0;part<2;part++) {
+          const anchor=anchors[part];
           const flicker=1+.14*Math.sin(elapsed*8+index*3+part);
-          matrix.position.set(tree.x + (part?tree.width*.31:.35),base,tree.z+.2*part);
+          matrix.position.set(anchor.x,anchor.y,anchor.z);
           matrix.rotation.set(0,tree.seed*6+elapsed*.27,0);
           matrix.scale.set(flicker*(part?1.2:.7),flicker*(part?1.6:1.2),flicker*(part?1.2:.7));
           matrix.updateMatrix();

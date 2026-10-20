@@ -19,6 +19,7 @@ export function jetEndPoint(eye, direction, hitDistance = null, maxRange = HOSE_
 
 /** The active target is the real fire; the jet must visually reach that same fire. */
 export function waterImpactPoint(eye, direction, hit = null) {
+  if (hit?.impact) return hit.impact;
   if (hit?.fire) return { x: hit.fire.x, y: 1.45, z: hit.fire.z };
   return jetEndPoint(eye, direction);
 }

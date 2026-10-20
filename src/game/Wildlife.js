@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { exposureAt } from './SurvivalLogic.js';
-import { SPECIES, closestFire, escapeDirection } from './WildlifeLogic.js';
+import { SPECIES, closestFire, escapeDirection, roamDirection } from './WildlifeLogic.js';
 
 // Deterministic wildlife placement near burning and safer areas.
+// First twelve animals are near the starting paths, not hidden at distant edges.
 const SPOTS = [
-  [-14,-13],[11,-17],[-26,12],[1,26],[26,12],[24,-26],[-12,28],
-  [-31,-22],[36,-8],[30,27],[-20,22],[2,-34],[-35,19],[18,29],
-  [33,17],[-34,-7],[7,-23],[16,3],[-7,-25],[8,35],[-28,30],
-  [32,-26],[-18,-5],[12,17],[-32,-35],[28,-4],[1,-4],[-22,8],
+  [-5,13],[5,19],[-9,8],[9,13],[-3,22],[12,18],[4,4],[-13,17],
+  [11,7],[0,25],[-7,28],[17,11],[-26,12],[24,-26],[-12,28],
+  [-31,-22],[36,-8],[30,27],[-20,22],[2,-34],[-35,19],[33,17],
+  [-34,-7],[7,-23],[16,3],[8,35],[-28,30],[-22,8],
 ];
 const TEXTURE_SIZE = 128;
 
@@ -91,14 +92,15 @@ export class Wildlife {
       const x=px+Math.sin(i*8.1)*1.4, z=pz+Math.cos(i*5.3)*1.6;
       const material=new THREE.SpriteMaterial({map:this.textures[kind],transparent:true,alphaTest:.06,depthWrite:false});
       const sprite=new THREE.Sprite(material);
-      const baseScale=species.scale * (species.flying?1.4:1);
-      sprite.scale.set(baseScale*1.35,baseScale*1.45,1);
-      sprite.position.set(x,species.flying?2.3:baseScale*.62,z);
+      const baseScale = species.scale * (species.flying ? 1.50 : 1.23);
+      sprite.scale.set(baseScale*1.8,baseScale*2.0,1);
+      sprite.position.set(x,species.flying?3.6:baseScale*.98,z);
       scene.add(sprite);
       this.animals.push({
         model:sprite,species,kind,x,z,baseScale,
         smoke:0,life:1,phase:i*2.8,speed:species.flying?4.9:2.4+(i%4)*.5,
         state:'trapped',cause:'',escaped:false,
+        homeX:x,homeZ:z,
       });
     }
     this.reset();
@@ -108,11 +110,11 @@ export class Wildlife {
     this.rescued=0;
     this.lost=0;
     this.animals.forEach((a,i)=>{
-      a.state=i<4?'dead':'trapped';
+      a.state=[12,16,20,21].includes(i)?'dead':'trapped';
       a.cause=i%2?'smoke':'fire';
       a.life=1;a.smoke=0;a.escaped=false;
-      a.model.position.set(a.x,a.species.flying?2.3:a.baseScale*.62,a.z);
-      a.model.scale.set(a.baseScale*1.35,a.baseScale*1.45,1);
+      a.model.position.set(a.x,a.species.flying?3.6:a.baseScale*.98,a.z);
+      a.model.scale.set(a.baseScale*1.8,a.baseScale*2.0,1);
       a.model.material.color.setHex(0xffffff);
       a.model.material.rotation=0;
       a.model.visible=true;
@@ -159,18 +161,31 @@ export class Wildlife {
         }
         if(closestFire(active,pos,15)||animal.smoke>1.5) animal.state='fleeing';
       }
-      if(animal.state==='fleeing'||animal.state==='rescued'){
-        const v=escapeDirection(pos,active);
-        const speed=animal.speed*(animal.state==='rescued'?1.15:1);
+      const flying = Boolean(animal.species.flying);
+      const fleeing = animal.state==='fleeing'||animal.state==='rescued';
+      // Birds always travel horizontally, even before a nearby fire reaches them.
+      // Ground animals make brief slow movements while calm and flee when threatened.
+      const roaming = !fleeing && (flying || Math.sin(elapsed*.65+animal.phase)>.18);
+      if(fleeing || roaming){
+        const v=fleeing
+          ? escapeDirection(pos,active)
+          : roamDirection(pos,elapsed,animal.phase,animal.homeX,animal.homeZ);
+        const speed = fleeing
+          ? animal.speed*(animal.state==='rescued'?1.15:1)
+          : flying ? animal.speed*.66 : animal.speed*.18;
         const nextX=pos.x+v.x*speed*dt, nextZ=pos.z+v.z*speed*dt;
-        // Perimeter is only a simulated horizon: wildlife disappears into the forest.
         if(Math.abs(nextX)>41||Math.abs(nextZ)>41){
-          animal.state='escaped';animal.model.visible=false;continue;
-        }
-        pos.x=nextX;pos.z=nextZ;
-        pos.y=(animal.species.flying?2.5:animal.baseScale*.62)+Math.abs(Math.sin(elapsed*animal.speed*2+animal.phase))*.15;
+          if(fleeing){ animal.state='escaped';animal.model.visible=false;continue; }
+          // Calm animals turn around instead of freezing against a map border.
+          pos.x-=v.x*speed*dt;pos.z-=v.z*speed*dt;
+        }else{pos.x=nextX;pos.z=nextZ;}
+      }
+      if(flying){
+        pos.y=3.5+Math.sin(elapsed*2.1+animal.phase)*.58;
+        // Low-cost wingbeat: scale the flat bird silhouette, no skeletal rig.
+        animal.model.scale.x=animal.baseScale*1.8*(.72+.28*Math.abs(Math.sin(elapsed*8+animal.phase)));
       }else{
-        pos.y=(animal.species.flying?2.3:animal.baseScale*.62)+Math.sin(elapsed*2+animal.phase)*.045;
+        pos.y=animal.baseScale*.98 + (fleeing ? Math.abs(Math.sin(elapsed*animal.speed*2+animal.phase))*.09 : 0);
       }
     }
     return deaths;
