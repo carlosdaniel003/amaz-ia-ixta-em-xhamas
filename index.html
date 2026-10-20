@@ -22,6 +22,7 @@
       <div class="scene-vignette" aria-hidden="true"></div>
       <div class="grain" aria-hidden="true"></div>
       <div class="heat-haze" aria-hidden="true"></div>
+      <div id="crosshair" class="crosshair" hidden aria-hidden="true"></div>
       <div id="damage-flash" class="damage-flash" aria-hidden="true"></div>
 
       <header class="topbar" id="topbar">
@@ -33,6 +34,8 @@
           <button class="pause-button" id="pause-button" type="button" title="Pausar jogo (Esc)">Ⅱ</button>
         </div>
       </header>
+
+      <section class="screen screen-modal loading-screen" id="loading-screen" hidden aria-live="polite"><div class="modal-content"><span class="eyebrow">PREPARANDO A MISSÃO</span><h2>Entrando<br /><em>na mata...</em></h2><p id="loading-message">Preparando a floresta e os equipamentos de combate.</p></div></section>
 
       <section class="screen device-screen" id="device-screen" aria-labelledby="device-title">
         <div class="device-panel">
@@ -55,7 +58,7 @@
           <h1 id="game-title">A Amazõia<br /><span>ixta em <em>xhamas.</em></span></h1>
           <p class="intro-copy">Apague as chamas, resgate os animais e reúna moedas para contratar bombeiros e solicitar apoio aéreo antes que o fogo cerque você.</p>
           <button type="button" class="primary-button" id="start-button"><span>COMEÇAR MISSÃO</span><span class="button-arrow" aria-hidden="true">↗</span></button>
-          <p class="desktop-instructions"><kbd>W A S D</kbd> MOVER <span>·</span> <kbd>MOUSE</kbd> MIRAR <span>·</span> <kbd>CLIQUE</kbd> ÁGUA <span>·</span> <kbd>1 2 3</kbd> REFORÇOS</p><button class="link-button" id="back-start-button" type="button">← MUDAR DISPOSITIVO</button>
+          <p class="desktop-instructions"><kbd>W A S D</kbd> MOVER <span>·</span> <kbd>MOUSE</kbd> OLHAR <span>·</span> <kbd>CLIQUE</kbd> ÁGUA <span>·</span> <kbd>1 2 3</kbd> REFORÇOS</p><button class="link-button" id="back-start-button" type="button">← MUDAR DISPOSITIVO</button>
           <p class="touch-instructions">MOVA COM O CONTROLE À ESQUERDA E SEGURE O BOTÃO ÁGUA.</p>
         </div>
         <aside class="mission-card" aria-label="Resumo da missão">
@@ -84,7 +87,7 @@
         <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
       </section>
 
-      <div class="game-tip" id="game-tip" hidden><span class="tip-pip"></span><span id="tip-text">Fique longe das chamas e da fumaça. Segure o clique para apagar.</span></div>
+      <div class="game-tip" id="game-tip" hidden><span class="tip-pip"></span><span id="tip-text">Mova o mouse para olhar; WASD para andar. Esc libera o cursor. Clique na cena para recapturá-lo.</span></div>
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
       <section class="screen screen-modal" id="pause-screen" hidden aria-labelledby="pause-title">

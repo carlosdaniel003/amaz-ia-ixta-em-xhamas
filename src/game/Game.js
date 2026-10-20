@@ -10,43 +10,30 @@ import { AirSupport } from './AirSupport.js';
 import { Wildlife } from './Wildlife.js';
 import { Atmosphere } from './Atmosphere.js';
 import { DamageFeedback } from '../ui/DamageFeedback.js';
+import { worldMovement } from './FirstPersonLogic.js';
 import { MAX_HEALTH, HIRE_COST, MUNICIPAL_COST, STATE_COST, MAX_HELPERS, exposureAt, isEncircled, advanceSurvival, extinguishReward, canBuy } from './SurvivalLogic.js';
 
 const MOVE_SPEED = 8.5;
-const worldGround = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const EYE_HEIGHT = 1.85;
+const RENDER_FPS = 36;
 
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = .97;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x504940);
-    this.scene.fog = new THREE.FogExp2(0x504940, .035);
-    this.scene.add(new THREE.HemisphereLight(0xb9b6a0, 0x1c2920, 1.55));
-    const sun = new THREE.DirectionalLight(0xf1ad7c, 1.05);
-    sun.position.set(-14, 27, 10);
-    this.scene.add(sun);
-    this.camera = new THREE.PerspectiveCamera(48, 1, .1, 150);
-    this.camera.position.set(0, 31, 39);
-    this.camera.lookAt(0, 1, 6);
-    this.cameraOffset = new THREE.Vector3(0, 28, 29);
-    this.raycaster = new THREE.Raycaster();
-    this.tempTarget = new THREE.Vector3();
-    this.tempNozzle = new THREE.Vector3();
-    this.world = new World(this.scene);
-    this.player = new Player(this.scene);
-    this.fires = new FireSystem(this.scene);
-    this.water = new WaterSystem(this.scene);
-    this.helpers = new Helpers(this.scene);
-    this.support = new AirSupport(this.scene);
-    this.wildlife = new Wildlife(this.scene);
-    this.atmosphere = new Atmosphere(this.scene);
+    // Do not allocate a GPU context or procedural forest on the device-selection page.
+    this.renderer = null;
+    this.scene = null;
+    this.camera = null;
+    this.world = null;
+    this.active = false;
+    this.gpuLost = false;
+    this.loopStarted = false;
+    this.renderScale = 1;
+    this.lastRenderTime = 0;
     this.damageFeedback = new DamageFeedback(document.getElementById('damage-flash'));
-    this.input = new Input(canvas, () => this.togglePause());
+    this.aimDirection = new THREE.Vector3(0, 0, -1);
+    this.tempNozzle = new THREE.Vector3();
+    this.input = new Input(canvas, () => this.togglePause(), () => this.onPointerUnlock());
     this.ui = new UI({ selectDesktop: () => this.chooseDesktop(), selectMobile: () => this.chooseMobile(), backToDevice: () => this.chooseDevice(), start: () => this.start(), pause: () => this.togglePause(), resume: () => this.resume(), restart: () => this.start(), hire: () => this.purchase('hire'), municipal: () => this.purchase('municipal'), state: () => this.purchase('state') });
     this.mode = 'device';
     this.coins = 0;
@@ -71,13 +58,103 @@ export class Game {
       this.input.clear();
       if (document.hidden && this.mode === 'playing') this.togglePause();
     });
-    canvas.addEventListener('webglcontextlost', (event) => {
-      event.preventDefault(); this.active = false;
-      const banner = document.getElementById('fatal-error');
-      banner.textContent = 'A conexão com a placa gráfica foi perdida. Recarregue a página para continuar.';
-      banner.hidden = false;
+    canvas.addEventListener('webglcontextlost', event => {
+      event.preventDefault();
+      this.gpuLost = true;
+      this.active = false;
+      this.loopStarted = false;
+      if (this.mode === 'playing') this.togglePause();
+      this.input.releaseLock();
+      this.ui.notify('Vídeo interrompido. Aguardando recuperação automática do navegador.');
     });
-    requestAnimationFrame((time) => this.frame(time));
+    canvas.addEventListener('webglcontextrestored', () => {
+      if (!this.renderer) return;
+      this.gpuLost = false;
+      this.renderScale = .65;
+      this.active = true;
+      this.previousTime = 0;
+      this.lastRenderTime = 0;
+      this.resize();
+      this.ui.notify('Vídeo recuperado com qualidade reduzida. Clique em CONTINUAR.');
+      if (!this.loopStarted) {
+        this.loopStarted = true;
+        requestAnimationFrame(time => this.frame(time));
+      }
+    });
+  }
+
+  /** Create WebGL only after the player has explicitly started a mission. */
+  initializeGraphics() {
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: false,
+      alpha: false,
+      stencil: false,
+      powerPreference: 'default',
+      preserveDrawingBuffer: false,
+    });
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = .97;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x504940);
+    this.scene.fog = new THREE.FogExp2(0x504940, .035);
+    this.scene.add(new THREE.HemisphereLight(0xb9b6a0, 0x1c2920, 1.55));
+    const sun = new THREE.DirectionalLight(0xf1ad7c, 1.05);
+    sun.position.set(-14, 27, 10);
+    this.scene.add(sun);
+
+    this.camera = new THREE.PerspectiveCamera(75, 1, .08, 115);
+    this.camera.rotation.order = 'YXZ';
+    this.scene.add(this.camera);
+    this.createFirstPersonHose();
+
+    this.world = new World(this.scene);
+    this.player = new Player(this.scene);
+    this.player.root.visible = false; // Camera is inside the character; avoid seeing the head.
+    this.fires = new FireSystem(this.scene);
+    this.water = new WaterSystem(this.scene);
+    this.helpers = new Helpers(this.scene);
+    this.support = new AirSupport(this.scene);
+    this.wildlife = new Wildlife(this.scene);
+    this.atmosphere = new Atmosphere(this.scene);
+    this.resize();
+  }
+
+  /** Small camera-attached hose, rendered as geometry rather than a heavy model. */
+  createFirstPersonHose() {
+    const hose = new THREE.Group();
+    hose.position.set(.32, -.27, -.57);
+    const metal = new THREE.MeshBasicMaterial({ color: 0x303f3b });
+    const tip = new THREE.MeshBasicMaterial({ color: 0xd7bb81 });
+    const sleeve = new THREE.MeshBasicMaterial({ color: 0xd08046 });
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(.064, .083, .52, 8), metal);
+    barrel.rotation.x = Math.PI / 2;
+    hose.add(barrel);
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(.082, .066, .13, 8), tip);
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.z = -.31;
+    hose.add(nozzle);
+    const glove = new THREE.Mesh(new THREE.BoxGeometry(.19, .14, .34), sleeve);
+    glove.position.set(.09, -.12, .20);
+    hose.add(glove);
+    this.camera.add(hose);
+  }
+
+  onPointerUnlock() {
+    if (this.mode !== 'playing') return;
+    this.mode = 'paused';
+    this.input.clear();
+    this.ui.setState('paused');
+  }
+
+  showFatal(error) {
+    console.error('Falha no WebGL:', error);
+    this.active = false;
+    this.input.releaseLock();
+    const banner = document.getElementById('fatal-error');
+    banner.textContent = 'Não foi possível iniciar os gráficos 3D. Verifique o suporte a WebGL e os drivers de vídeo do navegador. Tente atualizar a página ou outro navegador.';
+    banner.hidden = false;
   }
 
   chooseDesktop() { this.mode = 'start'; this.ui.setState('start'); }
@@ -85,6 +162,25 @@ export class Game {
   chooseDevice() { this.mode = 'device'; this.ui.setState('device'); }
 
   start() {
+    if (this.mode === 'loading') return;
+    this.mode = 'loading';
+    this.ui.setState('loading');
+    this.input.clear();
+    this.input.resetLook();
+    // Request lock in the actual click gesture. Canvas click is also a fallback.
+    this.input.requestLock();
+    // Yield a paint so the loading overlay appears BEFORE the expensive scene is built.
+    window.setTimeout(() => {
+      try {
+        if (!this.renderer) this.initializeGraphics();
+        this.beginSession();
+      } catch (error) {
+        this.showFatal(error);
+      }
+    }, 60);
+  }
+
+  beginSession() {
     this.mode = 'playing';
     this.coins = 0;
     this.elapsed = 0;
@@ -102,20 +198,34 @@ export class Game {
     this.wildlife.reset();
     this.atmosphere.reset();
     this.damageFeedback.reset();
-    this.world.refreshCanopies(this.player.position, true);
     this.ui.reset();
     this.ui.setState('playing');
     this.refreshHUD();
     this.canvas.focus({ preventScroll: true });
+    this.previousTime = 0;
+    this.lastRenderTime = 0;
+    this.active = !this.gpuLost;
+    if (this.active && !this.loopStarted) {
+      this.loopStarted = true;
+      requestAnimationFrame(time => this.frame(time));
+    }
   }
 
   togglePause() {
-    if (this.mode === 'playing') { this.mode = 'paused'; this.input.clear(); this.ui.setState('paused'); }
-    else if (this.mode === 'paused') this.resume();
+    if (this.mode === 'playing') {
+      this.mode = 'paused';
+      this.input.clear();
+      this.ui.setState('paused');
+      this.input.releaseLock();
+    } else if (this.mode === 'paused') this.resume();
   }
+
   resume() {
-    if (this.mode !== 'paused') return;
-    this.mode = 'playing'; this.ui.setState('playing'); this.canvas.focus({ preventScroll: true });
+    if (this.mode !== 'paused' || this.gpuLost) return;
+    this.mode = 'playing';
+    this.ui.setState('playing');
+    this.canvas.focus({ preventScroll: true });
+    this.input.requestLock();
   }
 
   purchase(type) {
@@ -137,17 +247,15 @@ export class Game {
   }
 
   resize() {
+    if (!this.camera || !this.renderer) return;
     const width = Math.max(1, this.canvas.clientWidth);
     const height = Math.max(1, this.canvas.clientHeight);
     this.camera.aspect = width / height;
-    this.camera.fov = width < 620 ? 59 : 48;
     this.camera.updateProjectionMatrix();
+    // A bounded framebuffer is more important than high DPR for integrated GPUs.
+    const scale = Math.min(1, Math.sqrt(1100000 / (width * height))) * this.renderScale;
+    this.renderer.setPixelRatio(scale);
     this.renderer.setSize(width, height, false);
-  }
-
-  aimAtPointer() {
-    this.raycaster.setFromCamera(this.input.aim, this.camera);
-    if (this.raycaster.ray.intersectPlane(worldGround, this.tempTarget)) this.player.face(this.tempTarget.x, this.tempTarget.z);
   }
 
   awardExtinguished(completed) {
@@ -171,6 +279,7 @@ export class Game {
     if (this.mode !== 'playing') return;
     this.mode = result;
     this.input.clear();
+    this.input.releaseLock();
     this.ui.setFinal(this.coins, this.wildlife.rescued, this.wildlife.lost, this.fires.fires.length);
     this.ui.setState(result);
   }
@@ -186,7 +295,8 @@ export class Game {
 
   update(dt) {
     this.elapsed += dt;
-    const move = this.input.move();
+    // WASD movement follows the heading, not the world axes.
+    const move = worldMovement(this.input.move(), this.input.yaw);
     const moving = Math.hypot(move.x, move.z) > .08;
     if (moving) {
       const nextX = this.player.position.x + move.x * MOVE_SPEED * dt;
@@ -194,20 +304,17 @@ export class Game {
       if (this.world.canOccupy(nextX, this.player.position.z)) this.player.position.x = nextX;
       if (this.world.canOccupy(this.player.position.x, nextZ)) this.player.position.z = nextZ;
     }
-    if (!this.input.hasPointerAim) {
-      const nearest = this.fires.nearest(this.player.position, 24);
-      if (nearest) this.player.face(nearest.x, nearest.z);
-      else if (moving) this.player.face(this.player.position.x + move.x, this.player.position.z + move.z);
-    } else this.aimAtPointer();
+    this.player.face(this.player.position.x - Math.sin(this.input.yaw), this.player.position.z - Math.cos(this.input.yaw));
     this.player.update(dt, moving);
-    this.world.refreshCanopies(this.player.position);
-    this.tempTarget.copy(this.player.position).add(this.cameraOffset);
-    this.camera.position.lerp(this.tempTarget, 1 - Math.exp(-4.3 * dt));
-    this.camera.lookAt(this.player.position.x, 1.1, this.player.position.z - 1.5);
+    this.camera.position.set(this.player.position.x, EYE_HEIGHT, this.player.position.z);
+    this.camera.rotation.set(this.input.pitch, this.input.yaw, 0, 'YXZ');
+    this.camera.updateMatrixWorld();
+    this.camera.getWorldDirection(this.aimDirection);
+    this.camera.localToWorld(this.tempNozzle.set(.32, -.27, -.9));
 
     const spraying = this.input.spraying;
-    if (spraying) this.awardExtinguished(this.fires.spray(this.player.position, this.player.forward, dt));
-    this.water.update(dt, spraying, this.player.nozzleWorldPosition(this.tempNozzle), this.player.forward);
+    if (spraying) this.awardExtinguished(this.fires.spray(this.camera.position, this.aimDirection, dt));
+    this.water.update(dt, spraying, this.tempNozzle, this.aimDirection);
     if (this.mode !== 'playing') return;
 
     this.awardExtinguished(this.helpers.update(dt, this.fires, this.world));
@@ -230,17 +337,26 @@ export class Game {
   }
 
   frame(time) {
-    if (!this.active) return;
-    const dt = this.previousTime ? Math.min((time - this.previousTime) / 1000, .045) : 0;
+    if (!this.active || !this.renderer) { this.loopStarted = false; return; }
+    requestAnimationFrame(next => this.frame(next));
+    if (time - this.lastRenderTime < 1000 / RENDER_FPS) return;
+    // Keep the menu/pause screen near static, saving GPU power while idle.
+    if (this.mode !== 'playing' && time - (this.lastIdleFrame || 0) < 250) return;
+    if (this.mode !== 'playing') this.lastIdleFrame = time;
+    const dt = this.previousTime ? Math.min((time - this.previousTime) / 1000, .05) : 0;
     this.previousTime = time;
-    if (this.mode === 'playing') this.update(dt);
-    if (this.mode !== 'paused') {
-      this.fires.update(dt, this.elapsed);
-      this.atmosphere.update(dt, this.fires, this.player.position);
-      if (this.mode !== 'playing') this.water.update(dt, false, this.player.position, this.player.forward);
+    this.lastRenderTime = time;
+    if (this.mode === 'playing') {
+      this.update(dt);
+      if (this.mode === 'playing') {
+        this.fires.update(dt, this.elapsed);
+        this.atmosphere.update(dt, this.fires, this.player.position);
+      }
     }
     this.damageFeedback.update(dt);
-    this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(next => this.frame(next));
+    if (!this.gpuLost) {
+      try { this.renderer.render(this.scene, this.camera); }
+      catch (error) { this.showFatal(error); }
+    }
   }
 }

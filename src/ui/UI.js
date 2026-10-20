@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 export class UI {
   constructor(actions) {
     this.elements = {
-      device: $('device-screen'), mobileNotice: $('mobile-notice'), hud: $('hud'), progress: $('progress-wrap'),
+      device: $('device-screen'), mobileNotice: $('mobile-notice'), loading: $('loading-screen'), hud: $('hud'), progress: $('progress-wrap'),
       start: $('start-screen'), pause: $('pause-screen'), win: $('win-screen'), lost: $('lost-screen'),
       tip: $('game-tip'), bottom: $('bottom-caption'),
       count: $('fire-count'), coins: $('coin-count'), progressLabel: $('progress-label'), progressFill: $('progress-fill'),
@@ -36,12 +36,14 @@ export class UI {
     const e = this.elements;
     const playing = this.state === 'playing';
     e.device.hidden = this.state !== 'device';
+    e.loading.hidden = this.state !== 'loading';
+    $('crosshair').hidden = !playing;
     e.mobileNotice.hidden = this.state !== 'mobile';
     e.start.hidden = this.state !== 'start';
     e.pause.hidden = this.state !== 'paused';
     e.win.hidden = this.state !== 'won';
     e.lost.hidden = this.state !== 'lost';
-    e.hud.hidden = ['device', 'mobile', 'start'].includes(this.state);
+    e.hud.hidden = ['device', 'mobile', 'start', 'loading'].includes(this.state);
     $('survival-hud').hidden = !playing && this.state !== 'paused';
     $('support-shop').hidden = !playing;
     e.progress.hidden = !playing && this.state !== 'paused';

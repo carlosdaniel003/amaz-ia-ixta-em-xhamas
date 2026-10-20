@@ -10,10 +10,21 @@ export function applyWater(fires, position, direction, delta, multiplier = 1) {
     if (!fire.active) continue;
     const dx = fire.x - position.x;
     const dz = fire.z - position.z;
-    const forward = dx * direction.x + dz * direction.z;
-    if (forward < 0 || forward > HOSE_RANGE) continue;
-    const side = Math.abs(dx * direction.z - dz * direction.x);
-    if (side > 1.35 + forward * .075) continue;
+    if (Number.isFinite(position.y) && Number.isFinite(direction.y)) {
+      // FPS: test the 3D water ray against the flame volume, not just a 2D cone.
+      const dy = 1.45 - position.y;
+      const forward = dx * direction.x + dy * direction.y + dz * direction.z;
+      if (forward <= 0 || forward > HOSE_RANGE) continue;
+      const perpendicularSq = Math.max(0, dx * dx + dy * dy + dz * dz - forward * forward);
+      const tolerance = 1.1 + forward * .075;
+      if (perpendicularSq > tolerance * tolerance) continue;
+    } else {
+      // AI allies retain their existing ground-plane targeting.
+      const forward = dx * direction.x + dz * direction.z;
+      if (forward < 0 || forward > HOSE_RANGE) continue;
+      const side = Math.abs(dx * direction.z - dz * direction.x);
+      if (side > 1.35 + forward * .075) continue;
+    }
     fire.health = Math.max(0, fire.health - WATER_DAMAGE_PER_SECOND * delta * multiplier);
     if (fire.health === 0) { fire.active = false; extinguished.push(fire); }
   }

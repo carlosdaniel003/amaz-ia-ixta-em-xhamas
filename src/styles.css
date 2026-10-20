@@ -28,3 +28,12 @@
 .damage-flash.is-smoke.is-active{animation-duration:.89s}
 @keyframes health-hit{0%{opacity:0}12%{opacity:1}35%{opacity:.7}100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){.heat-haze{animation:none}.damage-flash.is-active{animation:none;opacity:.58}}
+
+/* First-person HUD: centered sight that stays independent of pointer position. */
+.crosshair{position:absolute;left:50%;top:50%;width:25px;height:25px;transform:translate(-50%,-50%);z-index:6;pointer-events:none;filter:drop-shadow(0 1px 3px #111a)}
+.crosshair::before,.crosshair::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#eaf9d6;border-radius:2px}
+.crosshair::before{width:21px;height:2px;box-shadow:0 0 1px #122b22}
+.crosshair::after{height:21px;width:2px;box-shadow:0 0 1px #122b22}
+.loading-screen{z-index:15;background:rgba(7,22,20,.94);backdrop-filter:none}
+.loading-screen h2{font-size:clamp(42px,6vw,76px)}
+#game-canvas{cursor:crosshair}

@@ -17,9 +17,10 @@ Não abra `index.html` diretamente com `file://`, pois navegadores restringem m�
 | Plataforma | Ação | Controle |
 | --- | --- | --- |
 | Computador | Mover | W / A / S / D ou setas |
-| Computador | Mirar | Ponteiro do mouse |
+| Computador | Olhar e mirar em primeira pessoa | Mover o mouse (cursor capturado) |
 | Computador | Jogar água | Segurar botão esquerdo do mouse, Espaço ou F |
-| Computador | Pausar/retomar | Esc ou P |
+| Computador | Liberar o cursor/pausar | Esc (ou P para pausa) |
+| Computador | Voltar a capturar o cursor | Clique na cena ou clique em Continuar |
 | Computador | Contratar bombeiro | 1 (110 moedas; limite 3) |
 | Computador | Solicitar avião da prefeitura | 2 (220 moedas; intervalo de 18 s) |
 | Computador | Solicitar avião do estado | 3 (460 moedas; intervalo de 18 s) |
@@ -51,14 +52,20 @@ Não abra `index.html` diretamente com `file://`, pois navegadores restringem m�
 
 Com Node.js 22+ instalado, execute `npm test` (não requer `npm install`). Os testes cobrem mira, alcance, extinção única, seleção de alvos, dano por fogo, intoxicação por fumaça, cura, cerco, preços, limite de aliados e condições da propagação.
 
+## Primeira pessoa e recuperação gráfica
+
+A câmera fica à altura dos olhos e acompanha a rotação do mouse via Pointer Lock. A mangueira permanece visível na parte inferior da tela. WASD movimenta o personagem em relação à orientação atual; a mira fica fixa no centro. Esc libera o cursor e pausa, e clicar na cena retoma a captura.
+
+A página de escolha de dispositivo carrega sem criar WebGL ou objetos 3D. A floresta só é instanciada ao iniciar a missão, com uma tela de carregamento. A renderização utiliza resolução interna limitada e limite de quadros por segundo. Caso o navegador perca e consiga restaurar o contexto gráfico, o jogo permanece pausado e tenta se recuperar com qualidade reduzida; falhas permanentes ainda podem depender do driver, navegador ou hardware.
+
 ## Decisões de desempenho
 
 - Árvores altas, palmeiras, cipós, samambaias, vegetação rasteira e chamas usam `THREE.InstancedMesh` para reduzir draw calls.
-- As copas próximas à câmera são reduzidas localmente para preservar a visibilidade do personagem.
+- A câmera em primeira pessoa fica abaixo das copas e dispensa recalcular centenas de instâncias para abrir corredores artificiais.
 - Fumaça e brasas usam buffers de partículas reaproveitados, sem pós-processamento pesado.
 - Partículas da mangueira e fumaça reutilizam buffers em vez de criar objetos a cada frame.
 - Renderização sem sombras em tempo real, com sombras estilizadas estáticas no solo.
-- Pixel ratio limitado para evitar renderização excessiva em dispositivos de alta densidade.
+- Pixel ratio limitado a 1, orçamento de pixels e sem antialiasing pesado, para reduzir pressão sobre a GPU.
 - Passo de simulação limitado para evitar picos após abas suspensas.
 - O cenário e o personagem são feitos com geometria procedural: não há downloads de modelos 3D pesados.
 
