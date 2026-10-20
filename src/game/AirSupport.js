@@ -1,25 +1,45 @@
 import * as THREE from 'three';
+import { selectFlyoverLane, advanceFlight } from './AirSupportLogic.js';
 
-const matte = color => new THREE.MeshLambertMaterial({ color, flatShading: true });
+// Aircraft and falling water stay in one cheap draw call each; no heavy shaders.
+const RAIN_COUNT = 48;
+const matte = color => new THREE.MeshBasicMaterial({ color, fog: false });
 
 function planeModel(large) {
   const root = new THREE.Group();
-  const white = matte(large ? 0xf2f4ef : 0xe3e9da);
-  const stripe = matte(large ? 0xf6aa40 : 0x58a9c7);
-  const size = large ? 1.55 : 1;
+  const white = matte(large ? 0xf3eed8 : 0xe5f4ee);
+  const stripe = matte(large ? 0xf4a744 : 0x64c6dc);
+  const scale = large ? 1.55 : 1;
   const mesh = (geometry, material, x, y, z) => {
-    const object = new THREE.Mesh(geometry, material);
-    object.position.set(x * size, y * size, z * size);
-    root.add(object); return object;
+    const item = new THREE.Mesh(geometry, material);
+    item.position.set(x * scale, y * scale, z * scale);
+    root.add(item);
+    return item;
   };
-  const fuselage = mesh(new THREE.CylinderGeometry(.68 * size, .56 * size, 7.2 * size, 7), white, 0, 0, 0);
-  fuselage.rotation.z = Math.PI / 2;
-  const wing = mesh(new THREE.BoxGeometry(2.25 * size, .15 * size, 11.5 * size), white, 0, 0, 0);
-  const tail = mesh(new THREE.BoxGeometry(1.3 * size, .12 * size, 4.9 * size), stripe, -3, .35, 0);
-  mesh(new THREE.BoxGeometry(.8 * size, 1.5 * size, .13 * size), stripe, -3, .95, 0);
-  mesh(new THREE.BoxGeometry(.95 * size, .55 * size, 1.25 * size), stripe, 2.25, .22, 0);
+  const body = mesh(new THREE.CylinderGeometry(.65 * scale, .55 * scale, 7.2 * scale, 7), white, 0, 0, 0);
+  body.rotation.z = Math.PI / 2;
+  mesh(new THREE.BoxGeometry(2.25 * scale, .15 * scale, 11.5 * scale), white, 0, 0, 0);
+  mesh(new THREE.BoxGeometry(1.3 * scale, .12 * scale, 4.9 * scale), stripe, -3, .35, 0);
+  mesh(new THREE.BoxGeometry(.8 * scale, 1.5 * scale, .13 * scale), stripe, -3, .95, 0);
+  mesh(new THREE.BoxGeometry(.95 * scale, .55 * scale, 1.25 * scale), stripe, 2.25, .22, 0);
   root.rotation.y = Math.PI;
   return root;
+}
+
+function waterCurtain(scene, large) {
+  const positions = new Float32Array(RAIN_COUNT * 3);
+  positions.fill(-1000);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+  const mesh = new THREE.Points(geometry, new THREE.PointsMaterial({
+    color: large ? 0xa2e6ff : 0x87d9fc,
+    size: large ? .56 : .37, transparent: true, opacity: .86,
+    depthWrite: false, sizeAttenuation: true, fog: false,
+  }));
+  mesh.frustumCulled = false;
+  mesh.visible = false;
+  scene.add(mesh);
+  return {mesh, positions, attribute: geometry.attributes.position};
 }
 
 export class AirSupport {
@@ -27,26 +47,30 @@ export class AirSupport {
     this.scene = scene;
     this.active = [];
   }
+
   dispatch(type, fires) {
     const large = type === 'state';
     const targets = fires.fires.filter(f => f.active);
     if (!targets.length) return false;
-    // Aim at the densest active cluster rather than dropping water in empty terrain.
-    const center = targets.reduce((best, fire) => {
-      const neighbors = targets.filter(other => Math.abs(other.z - fire.z) < (large ? 16 : 9)).length;
-      return neighbors > best.count ? { count: neighbors, z: fire.z } : best;
-    }, { count: 0, z: 0 });
+
+    // Choose a lane through the highest concentration of actual active fires.
+    const radius = large ? 15 : 9;
+    const best = selectFlyoverLane(targets, radius);
+
+    const altitude = large ? 41 : 35; // Above the tallest canopy.
     const model = planeModel(large);
-    model.position.set(-56, large ? 20 : 15, center.z);
+    model.position.set(-56, altitude, best.z);
     this.scene.add(model);
-    const drop = new THREE.Mesh(new THREE.CylinderGeometry(large ? 10 : 6, large ? 15 : 8, large ? 14 : 10, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0x7acff0, opacity: .18, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-    drop.position.set(0, -(large ? 10 : 7.5), 0);
-    model.add(drop);
-    this.active.push({ model, x: -56, z: center.z, large, raining: false, lastDrench: -60 });
+    const rain = waterCurtain(this.scene, large);
+    this.active.push({
+      model, rain, x:-56, z:best.z, altitude, large, type,
+      raining:false, lastDrench:-60, flightTime:0, extinguished:0,
+    });
     return true;
   }
+
   disposeFlight(flight) {
-    this.scene.remove(flight.model);
+    this.scene.remove(flight.model, flight.rain.mesh);
     const materials = new Set();
     flight.model.traverse(object => {
       if (!object.isMesh) return;
@@ -55,22 +79,52 @@ export class AirSupport {
       else materials.add(object.material);
     });
     for (const material of materials) material.dispose();
+    flight.rain.mesh.geometry.dispose();
+    flight.rain.mesh.material.dispose();
   }
-  reset() { for (const flight of this.active) this.disposeFlight(flight); this.active.length = 0; }
+
+  reset() {
+    for (const flight of this.active) this.disposeFlight(flight);
+    this.active.length = 0;
+  }
+
   update(dt, fires) {
     const completed = [];
     for (let i = this.active.length - 1; i >= 0; i--) {
       const flight = this.active[i];
-      flight.x += (flight.large ? 14 : 12) * dt;
+      const shouldDrench = advanceFlight(flight, dt);
       flight.model.position.x = flight.x;
-      const stream = flight.model.children.at(-1);
-      flight.raining = flight.x > -40 && flight.x < 42;
-      stream.visible = flight.raining;
-      if (flight.raining && flight.x - flight.lastDrench > 1.6) {
-        flight.lastDrench = flight.x;
-        completed.push(...fires.drench(flight.x, flight.z, flight.large ? 15 : 9, flight.large ? 95 : 62));
+      flight.model.position.y = flight.altitude + Math.sin(flight.flightTime * 2.1) * .22;
+      flight.model.rotation.z = Math.sin(flight.flightTime * 1.65) * .025;
+      flight.rain.mesh.visible = flight.raining;
+
+      if (flight.raining) {
+        const positions = flight.rain.positions;
+        const spread = flight.large ? 10 : 6;
+        const dropPhase = flight.flightTime * 1.5;
+        for (let j=0; j<RAIN_COUNT; j++) {
+          const progress = (j / RAIN_COUNT + dropPhase) % 1;
+          const angle = j * 2.399963; // Even low-count distribution.
+          const size = Math.sqrt(progress) * spread;
+          const offset = j * 3;
+          positions[offset] = flight.x - progress * 4 + Math.cos(angle) * size * .23;
+          positions[offset+1] = flight.altitude - progress * (flight.altitude-.55);
+          positions[offset+2] = flight.z + Math.sin(angle) * size;
+        }
+        flight.rain.attribute.needsUpdate = true;
+
+        // This is the real damage event. The tactical preview displays these fires.
+        if (shouldDrench) {
+          flight.lastDrench = flight.x;
+          const extinguished = fires.drench(flight.x, flight.z, flight.large ? 15 : 9, flight.large ? 95 : 62);
+          flight.extinguished += extinguished.length;
+          completed.push(...extinguished);
+        }
       }
-      if (flight.x > 60) { this.disposeFlight(flight); this.active.splice(i, 1); }
+      if (flight.x > 60) {
+        this.disposeFlight(flight);
+        this.active.splice(i,1);
+      }
     }
     return completed;
   }

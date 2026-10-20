@@ -10,6 +10,7 @@ import { AirSupport } from './AirSupport.js';
 import { Wildlife } from './Wildlife.js';
 import { Atmosphere } from './Atmosphere.js';
 import { DamageFeedback } from '../ui/DamageFeedback.js';
+import { AirSupportView } from '../ui/AirSupportView.js';
 import { worldMovement } from './FirstPersonLogic.js';
 import { findGraphicsContext } from './GraphicsSupport.js';
 import { findAimedFire } from './FireLogic.js';
@@ -36,6 +37,7 @@ export class Game {
     this.renderScale = 1;
     this.lastRenderTime = 0;
     this.damageFeedback = new DamageFeedback(document.getElementById('damage-flash'));
+    this.airView = new AirSupportView(document.getElementById('air-support-view'), document.getElementById('air-support-map'));
     this.aimDirection = new THREE.Vector3(0, 0, -1);
     this.tempNozzle = new THREE.Vector3();
     this.input = new Input(canvas, () => this.togglePause(), () => this.onPointerUnlock());
@@ -178,6 +180,7 @@ export class Game {
     if (this.mode !== 'playing') return;
     this.mode = 'paused';
     this.input.clear();
+    this.airView.hide();
     this.ui.setState('paused');
   }
 
@@ -190,6 +193,7 @@ export class Game {
     this.input.releaseLock();
     this.mode = 'error';
     this.startupError = error;
+    this.airView.hide();
     this.ui.setState('error');
 
     const message = error instanceof Error ? error.message : String(error);
@@ -285,6 +289,7 @@ export class Game {
     this.water.reset();
     this.helpers.reset();
     this.support.reset();
+    this.airView.hide();
     this.wildlife.reset();
     this.atmosphere.reset();
     this.damageFeedback.reset();
@@ -307,6 +312,7 @@ export class Game {
       this.input.enabled = false;
       this.input.clear();
       this.ui.setState('paused');
+      this.airView.hide();
       this.input.releaseLock();
     } else if (this.mode === 'paused') this.resume();
   }
@@ -373,6 +379,7 @@ export class Game {
   finish(result) {
     if (this.mode !== 'playing') return;
     this.mode = result;
+    this.airView.hide();
     this.input.enabled = false;
     this.input.clear();
     this.input.releaseLock();
@@ -415,12 +422,15 @@ export class Game {
     if (spraying) this.awardExtinguished(this.fires.spray(this.camera.position, this.aimDirection, dt));
     // Visual jet terminates at the same aimed focus used by FireLogic.
     this.water.update(dt, spraying, this.camera.position, this.tempNozzle,
-      this.aimDirection, hit?.distance ?? null);
+      this.aimDirection, hit);
     if (this.mode !== 'playing') return;
 
     this.awardExtinguished(this.helpers.update(dt, this.fires, this.world));
     if (this.mode !== 'playing') return;
-    this.awardExtinguished(this.support.update(dt, this.fires));
+    const airResults = this.support.update(dt, this.fires);
+    this.airView.update(dt, this.support.active, this.fires.fires,
+      !this.ui.shopOpen || this.platform !== 'mobile');
+    this.awardExtinguished(airResults);
     if (this.mode !== 'playing') return;
     const newFires = this.fires.spread(dt, (x, z) => this.world.canOccupy(x, z));
     if (newFires.length) this.ui.notify(`O fogo se espalhou! +${newFires.length} foco(s).`);

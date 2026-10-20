@@ -115,3 +115,12 @@ O joystick movimenta o personagem em relação à câmera; arrastar o cenário c
 
 ### Como mirar corretamente
 Arraste a região livre do lado direito para colocar a cruz central sobre o fogo. Ao aparecer **ALVO**, mantenha **ÁGUA** pressionado até o foco se apagar. O jogador também pode andar pelo joystick simultaneamente.
+
+
+## Trajetória da água e animação de aviões
+
+- O jato da mangueira voltou a desenhar uma **curva parabólica**, como a trajetória da água sob a gravidade. A elevação é proporcional ao alcance, e a curva sempre termina no foco efetivamente identificado pela mira. Assim, a aparência da água e a lógica de apagar o incêndio não se contradizem.
+- **O foco sob a mira central** permanece o alvo que recebe dano do jogador; a curvatura visual não cria acertos automáticos em focos laterais.
+- As solicitações à prefeitura e ao estado criam modelos 3D diferentes de aeronaves. Ambos cruzam a floresta acima das copas. O avião estadual tem maior porte e área de lançamento.
+- Cada avião abre uma pequena **visão aérea tática** em Canvas 2D, com os aviões em movimento, os focos ativos, a cortina de água e o contador de focos efetivamente apagados. Ela não abre uma segunda câmera 3D e pode ser ocultada enquanto o painel de compras está aberto no celular.
+- A queda de água no cenário usa apenas 48 pontos reaproveitados por avião. Os danos aplicados vêm de `AirSupport.drench`, e a visualização aérea consulta os mesmos incêndios; não são efeitos independentes ou apenas decorativos.

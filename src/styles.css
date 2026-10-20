@@ -135,3 +135,19 @@
 #app[data-input-mode="mobile"] .crosshair::before{width:17px}
 #app[data-input-mode="mobile"] .crosshair::after{height:17px}
 #app[data-input-mode="mobile"] .crosshair-target-label{top:24px;font-size:8px;padding:2px 5px}
+
+/* Live aerial support preview uses an inexpensive 2D canvas, not a second WebGL pass. */
+.air-support-view{position:absolute;z-index:7;right:clamp(15px,4vw,78px);bottom:125px;width:280px;padding:8px;border-radius:10px;border:1px solid #b5d9bf67;background:#102a25ee;box-shadow:0 12px 36px #071c1677;pointer-events:none;display:flex;flex-direction:column;gap:7px}
+.air-support-view[hidden]{display:none!important}
+.air-support-view-header{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:9px;letter-spacing:.07em;color:#e7fbd6}
+.air-support-view-header strong{font-size:9px;white-space:nowrap}
+.air-support-view-header span{font-size:8px;color:#8fe3cb;white-space:nowrap}
+.air-support-view canvas{display:block;width:100%;height:auto;max-height:118px;border-radius:5px;background:#173b31}
+#app[data-input-mode="mobile"] .air-support-view{right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 156px);bottom:auto;width:min(204px,calc(100vw - 184px));padding:6px;gap:5px}
+#app[data-input-mode="mobile"] .air-support-view-header{flex-direction:column;align-items:flex-start;gap:3px}
+#app[data-input-mode="mobile"] .air-support-view canvas{max-height:94px}
+@media(max-width:365px){#app[data-input-mode="mobile"] .air-support-view{right:8px;width:164px;top:calc(env(safe-area-inset-top) + 165px)}}
+@media(max-height:510px) and (orientation:landscape){
+ #app[data-input-mode="mobile"] .air-support-view{top:calc(env(safe-area-inset-top) + 109px);width:200px}
+ #app[data-input-mode="mobile"] .air-support-view canvas{max-height:82px}
+}
