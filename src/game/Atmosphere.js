@@ -29,15 +29,16 @@ function makeClouds(count, material) {
 
 // Low-cost smoke sprites and drifting embers: no postprocessing and no new per-frame objects.
 export class Atmosphere {
-  constructor(scene, { lowPerformance = false } = {}) {
+  constructor(scene, { lowPerformance = false, mobile = false } = {}) {
     this.scene = scene;
-    this.lowPerformance = lowPerformance;
+    this.lowPerformance = lowPerformance || mobile;
+    this.mobile = mobile;
     this.elapsed = 0;
-    this.clouds = makeClouds(lowPerformance ? 18 : 56, new THREE.PointsMaterial({
+    this.clouds = makeClouds(mobile ? 12 : mobile ? 12 : lowPerformance ? 18 : 56, new THREE.PointsMaterial({
       map: getSmokeTexture(), color: 0x81796e, size: 6.5, opacity: .33,
       transparent: true, depthWrite: false, alphaTest: .01, sizeAttenuation: true,
     }));
-    this.embers = makeClouds(lowPerformance ? 14 : 36, new THREE.PointsMaterial({
+    this.embers = makeClouds(mobile ? 8 : mobile ? 8 : lowPerformance ? 14 : 36, new THREE.PointsMaterial({
       color: 0xff9d59, size: .15, opacity: .66, transparent: true,
       depthWrite: false, sizeAttenuation: true,
     }));

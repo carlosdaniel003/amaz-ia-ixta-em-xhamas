@@ -48,3 +48,81 @@
 .graphics-error-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
 .graphics-error-actions button{border:1px solid #aacf9f7c;border-radius:5px;padding:12px 15px;background:#d3f4ab;color:#193b2e;font-size:11px;font-weight:700;letter-spacing:.05em}
 .graphics-error-actions button+button{background:transparent;color:#d8f6bf}
+
+
+/* === Mobile first-person mode. No pointer lock and no intrusive fullscreen UI. === */
+#app[data-input-mode="mobile"]{touch-action:none;overscroll-behavior:none}
+#app[data-input-mode="mobile"] #game-canvas{touch-action:none;cursor:default}
+#app[data-input-mode="mobile"] .desktop-instructions{display:none}
+#app[data-input-mode="mobile"] .touch-instructions{display:block;font-size:11px;line-height:1.65;letter-spacing:.045em;max-width:380px;color:#f1f9e3}
+#app[data-input-mode="mobile"] .screen-start{overflow-y:auto;overscroll-behavior:contain;align-items:flex-start;justify-content:center;padding:76px 22px 32px}
+#app[data-input-mode="mobile"] .screen-start .intro{margin:auto 0;max-width:510px}
+#app[data-input-mode="mobile"] .screen-start h1{font-size:clamp(36px,9.3vw,66px);margin:15px 0 15px;line-height:1.02}
+#app[data-input-mode="mobile"] .screen-start .intro-copy{font-size:13px;line-height:1.5;margin-bottom:18px;max-width:400px}
+#app[data-input-mode="mobile"] .screen-start .mission-card{display:none}
+#app[data-input-mode="mobile"] .screen-start .primary-button{min-width:min(290px,100%);min-height:52px;padding:12px 18px}
+#app[data-input-mode="mobile"] .screen-start .link-button{margin-top:7px}
+#app[data-input-mode="mobile"] .topbar{padding:calc(env(safe-area-inset-top) + 9px) 12px 0}
+#app[data-input-mode="mobile"] .topbar:has(.hud:not([hidden])){justify-content:flex-end}
+#app[data-input-mode="mobile"] .topbar:has(.hud:not([hidden])) .brand{display:none}
+#app[data-input-mode="mobile"] .hud{padding:8px 11px;gap:9px}
+#app[data-input-mode="mobile"] .stat-label{display:none}
+#app[data-input-mode="mobile"] .hud-stat strong{font-size:16px}
+#app[data-input-mode="mobile"] .pause-button{width:38px;height:38px}
+#app[data-input-mode="mobile"] .survival-hud{top:calc(env(safe-area-inset-top) + 69px);left:max(11px,env(safe-area-inset-left));width:188px;padding:9px 10px;box-shadow:0 4px 16px #06140e70}
+#app[data-input-mode="mobile"] .meter-row{margin-bottom:7px}
+#app[data-input-mode="mobile"] .wildlife-stats{font-size:8px;margin-top:8px;padding-top:7px}
+#app[data-input-mode="mobile"] .progress-wrap{top:calc(env(safe-area-inset-top) + 178px);bottom:auto;left:max(12px,env(safe-area-inset-left));transform:none;width:186px}
+#app[data-input-mode="mobile"] .progress-heading{font-size:8px}
+#app[data-input-mode="mobile"] .game-tip{display:none!important}
+#app[data-input-mode="mobile"] .toast{top:calc(env(safe-area-inset-top) + 55px);max-width:75vw;text-align:center;font-size:11px}
+#app[data-input-mode="mobile"] .heat-haze{opacity:.2}
+#app[data-input-mode="mobile"] .grain{display:none}
+#app[data-input-mode="mobile"] .screen-modal{overflow-y:auto;overscroll-behavior:contain;align-items:center}
+#app[data-input-mode="mobile"] .modal-content h2{font-size:clamp(39px,10vw,66px)}
+#app[data-input-mode="mobile"] .modal-content p{font-size:13px}
+.mobile-controls{position:absolute;z-index:8;inset:auto max(16px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 14px) max(16px,env(safe-area-inset-left));display:flex;align-items:end;justify-content:space-between;pointer-events:none;touch-action:none}
+.mobile-stick{width:112px;height:112px;border-radius:50%;position:relative;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;border:2px solid #d4edc881;background:radial-gradient(circle at center,#24493b91 0 37%,#15392dad 39% 100%);box-shadow:0 0 0 6px #18382d2d,0 9px 30px #071d1770}
+.mobile-stick::before,.mobile-stick::after{content:"";position:absolute;inset:17px 50%;border-left:1px solid #d4ebcc3b}
+.mobile-stick::after{inset:50% 17px;border-left:0;border-top:1px solid #d4ebcc3b}
+.mobile-stick-thumb{position:absolute;left:calc(50% - 23px);top:calc(50% - 23px);width:46px;height:46px;background:#d1f4b8;border:2px solid #f5ffe7;border-radius:50%;box-shadow:0 3px 15px #031f194e;will-change:transform}
+.mobile-stick-label{position:absolute;bottom:-19px;left:0;right:0;text-align:center;font-size:9px;color:#f1fce8;font-weight:700;letter-spacing:.17em;pointer-events:none;text-shadow:0 2px 4px #0b241b}
+.mobile-spray-button{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;width:102px;height:102px;border-radius:50%;border:2px solid #eaffc6;background:#d2efaa;color:#193d31;box-shadow:0 0 0 6px #2445353d,0 10px 26px #0006;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;font-size:11px;font-weight:800;letter-spacing:.13em}
+.mobile-spray-drop{font-size:32px;line-height:1}
+.mobile-spray-button.pressed{background:#f4ffdc;transform:scale(.94);box-shadow:0 0 0 9px #d5f8b73b}
+.mobile-shop-toggle{position:absolute;z-index:9;top:calc(env(safe-area-inset-top) + 103px);right:max(12px,env(safe-area-inset-right));touch-action:manipulation;min-height:44px;padding:8px 12px;border:1px solid #d8edb977;background:#163c32e8;color:#dffac6;border-radius:7px;letter-spacing:.06em;font-weight:700;font-size:11px;box-shadow:0 6px 22px #06181286}
+.mobile-shop-toggle.is-open{background:#def6bd;color:#153f31}
+.mobile-shop-toggle span{margin-left:4px}
+.mobile-shop-close{display:none}
+#app[data-input-mode="mobile"] .support-shop{position:absolute;z-index:12;top:calc(env(safe-area-inset-top) + 152px);right:max(12px,env(safe-area-inset-right));bottom:auto;max-height:min(58svh,320px);overflow-y:auto;overscroll-behavior:contain;width:min(270px,calc(100vw - 28px));padding:12px;border-radius:9px}
+#app[data-input-mode="mobile"] .support-shop .mobile-shop-close{display:block;position:absolute;right:8px;top:7px;width:30px;height:30px;border:1px solid #fff5;background:#204b3b;color:#f2ffe0;border-radius:5px}
+#app[data-input-mode="mobile"] .support-heading{padding-right:28px;font-size:9px}
+#app[data-input-mode="mobile"] .support-action{min-height:48px;padding:8px 10px}
+#app[data-input-mode="mobile"] .support-action strong{font-size:11px}
+#app[data-input-mode="mobile"] .support-action small{font-size:9px}
+#app[data-input-mode="mobile"] .support-action em{font-size:13px}
+#app[data-input-mode="mobile"] .support-action:disabled{opacity:.45}
+@media(max-width:400px){
+ #app[data-input-mode="mobile"] .screen-start{padding-left:16px;padding-right:16px}
+ #app[data-input-mode="mobile"] .screen-start h1{font-size:clamp(35px,10vw,43px)}
+ #app[data-input-mode="mobile"] .survival-hud{width:170px}
+ #app[data-input-mode="mobile"] .progress-wrap{width:168px}
+ #app[data-input-mode="mobile"] .mobile-shop-toggle{font-size:10px;padding:7px 9px}
+ .mobile-stick{width:96px;height:96px}
+ .mobile-spray-button{width:91px;height:91px}
+}
+@media(max-height:510px) and (orientation:landscape){
+ #app[data-input-mode="mobile"] .topbar{padding:calc(env(safe-area-inset-top) + 5px) 12px 0}
+ #app[data-input-mode="mobile"] .survival-hud{top:calc(env(safe-area-inset-top) + 49px);width:183px}
+ #app[data-input-mode="mobile"] .progress-wrap{top:calc(env(safe-area-inset-top) + 153px);width:186px}
+ #app[data-input-mode="mobile"] .mobile-shop-toggle{top:calc(env(safe-area-inset-top) + 51px)}
+ #app[data-input-mode="mobile"] .support-shop{top:calc(env(safe-area-inset-top) + 101px);max-height:calc(100svh - 112px)}
+ .mobile-controls{bottom:calc(env(safe-area-inset-bottom) + 8px);left:max(25px,env(safe-area-inset-left));right:max(25px,env(safe-area-inset-right))}
+ .mobile-stick{width:96px;height:96px}
+ .mobile-spray-button{width:94px;height:94px}
+ #app[data-input-mode="mobile"] .screen-start{padding:54px 24px 18px}
+ #app[data-input-mode="mobile"] .screen-start h1{font-size:clamp(29px,6vw,46px);margin:6px 0}
+ #app[data-input-mode="mobile"] .screen-start .intro-copy{font-size:12px;margin-bottom:8px}
+ #app[data-input-mode="mobile"] .touch-instructions{margin-top:8px;font-size:9px}
+ #app[data-input-mode="mobile"] .screen-start .primary-button{min-height:45px}
+}

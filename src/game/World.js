@@ -25,8 +25,9 @@ function instance(mesh, index, x, y, z, sx, sy, sz, rotation = 0) {
 }
 
 export class World {
-  constructor(scene, { lowPerformance = false } = {}) {
+  constructor(scene, { lowPerformance = false, mobile = false } = {}) {
     this.lowPerformance = lowPerformance;
+    this.mobile = mobile;
     this.group = new THREE.Group();
     this.obstacles = [];
     scene.add(this.group);
@@ -47,7 +48,7 @@ export class World {
     const patches = new THREE.InstancedMesh(
       new THREE.CircleGeometry(1, 9),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.42, depthWrite: false }),
-      this.lowPerformance ? 90 : 160,
+      this.mobile ? 60 : this.lowPerformance ? 90 : 160,
     );
     for (let i = 0; i < patches.count; i++) {
       const x = (rng() - 0.5) * 105;
@@ -64,7 +65,7 @@ export class World {
 
     const trees = [];
     let attempts = 0;
-    while (trees.length < (this.lowPerformance ? 105 : 170) && attempts++ < 5200) {
+    while (trees.length < (this.mobile ? 75 : this.lowPerformance ? 105 : 170) && attempts++ < 5200) {
       const x = (rng() - 0.5) * 103;
       const z = (rng() - 0.5) * 103;
       if (Math.hypot(x, z - 10) < 4.2) continue;
@@ -103,7 +104,7 @@ export class World {
       this.group.add(mesh);
     }
 
-    const shrubs = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), this.lowPerformance ? 165 : 300);
+    const shrubs = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), this.mobile ? 120 : this.lowPerformance ? 165 : 300);
     for (let i = 0; i < shrubs.count; i++) {
       const x = (rng() - .5) * 105;
       const z = (rng() - .5) * 105;
@@ -117,9 +118,9 @@ export class World {
 
 
     // Tall palms and intertwined understory: batched, low-poly and light on draw calls.
-    const palms = new THREE.InstancedMesh(new THREE.CylinderGeometry(.16, .27, 1, 6), new THREE.MeshLambertMaterial({ color: 0x524333 }), this.lowPerformance ? 20 : 36);
+    const palms = new THREE.InstancedMesh(new THREE.CylinderGeometry(.16, .27, 1, 6), new THREE.MeshLambertMaterial({ color: 0x524333 }), this.mobile ? 14 : this.lowPerformance ? 20 : 36);
     const leaves = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), palms.count * 6);
-    const vines = new THREE.InstancedMesh(new THREE.CylinderGeometry(.045, .07, 1, 4), new THREE.MeshLambertMaterial({ color: 0x3b512b }), this.lowPerformance ? 60 : 110);
+    const vines = new THREE.InstancedMesh(new THREE.CylinderGeometry(.045, .07, 1, 4), new THREE.MeshLambertMaterial({ color: 0x3b512b }), this.mobile ? 44 : this.lowPerformance ? 60 : 110);
     for (let i = 0; i < palms.count; i++) {
       const x = (rng() - .5) * 106, z = (rng() - .5) * 106, h = 7 + rng() * 8;
       instance(palms, i, x, h / 2, z, .35, h, .35, rng() * 6);
@@ -136,7 +137,7 @@ export class World {
     for (const mesh of [palms, leaves, vines]) {
       mesh.frustumCulled = true; mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere(); this.group.add(mesh);
     }
-    const ferns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), (this.lowPerformance ? 72 : 150) * 4);
+    const ferns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), (this.mobile ? 48 : this.lowPerformance ? 72 : 150) * 4);
     for (let i = 0; i < ferns.count / 4; i++) {
       const x = (rng() - .5) * 104, z = (rng() - .5) * 104, size = .7 + rng() * .8;
       for (let j = 0; j < 4; j++) {
@@ -147,7 +148,7 @@ export class World {
     }
     ferns.frustumCulled = true; ferns.instanceMatrix.needsUpdate = true; ferns.computeBoundingSphere(); this.group.add(ferns);
 
-    const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), this.lowPerformance ? 32 : 60);
+    const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), this.mobile ? 20 : this.lowPerformance ? 32 : 60);
     for (let i = 0; i < rocks.count; i++) {
       const x = (rng() - .5) * 97;
       const z = (rng() - .5) * 97;

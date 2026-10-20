@@ -21,6 +21,7 @@ const RENDER_FPS = 30; // Conservative default for integrated GPUs.
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
+    this.platform = 'desktop';
     // Do not allocate a GPU context or procedural forest on the device-selection page.
     this.renderer = null;
     this.scene = null;
@@ -137,7 +138,7 @@ export class Game {
     await this.nextLoadStage('Verificando WebGL2 e preparando a câmera...');
     this.createRenderer();
     await this.nextLoadStage('Construindo árvores e caminhos da floresta...');
-    this.world = new World(this.scene, { lowPerformance: true });
+    this.world = new World(this.scene, { lowPerformance: true, mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Preparando personagem, focos e mangueira...');
     this.player = new Player(this.scene);
     this.player.root.visible = false;
@@ -148,7 +149,7 @@ export class Game {
     this.support = new AirSupport(this.scene);
     this.wildlife = new Wildlife(this.scene);
     await this.nextLoadStage('Configurando fumaça e finalizando a missão...');
-    this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true });
+    this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true, mobile: this.platform === 'mobile' });
     await this.nextLoadStage('Entrando na floresta...');
   }
 
@@ -183,6 +184,7 @@ export class Game {
     console.error('Falha na etapa: ' + this.startupStage, error);
     this.active = false;
     this.loopStarted = false;
+    this.input.enabled = false;
     this.input.clear();
     this.input.releaseLock();
     this.mode = 'error';
@@ -233,13 +235,27 @@ export class Game {
     banner.hidden = false;
   }
 
-  chooseDesktop() { this.mode = 'start'; this.ui.setState('start'); }
-  chooseMobile() { this.mode = 'mobile'; this.ui.setState('mobile'); }
-  chooseDevice() { this.mode = 'device'; this.ui.setState('device'); }
+  selectPlatform(platform) {
+    if (this.mode === 'playing' || this.mode === 'loading') return;
+    this.platform = platform;
+    this.input.setPlatform(platform);
+    this.ui.setPlatform(platform);
+    this.mode = 'start';
+    this.ui.setState('start');
+  }
+  chooseDesktop() { this.selectPlatform('desktop'); }
+  chooseMobile() { this.selectPlatform('mobile'); }
+  chooseDevice() {
+    this.input.enabled = false;
+    this.input.clear();
+    this.mode = 'device';
+    this.ui.setState('device');
+  }
 
   async start() {
     if (this.mode === 'loading') return;
     this.mode = 'loading';
+    this.input.enabled = false;
     this.ui.setState('loading');
     this.input.clear();
     this.input.resetLook();
@@ -262,6 +278,7 @@ export class Game {
     this.lastAirlift = { municipal: -100, state: -100 };
     this.healthState = { health: MAX_HEALTH, smoke: 0, safeTime: 0 };
     this.input.clear();
+    this.input.enabled = true;
     this.player.reset();
     this.fires.reset();
     this.water.reset();
@@ -286,6 +303,7 @@ export class Game {
   togglePause() {
     if (this.mode === 'playing') {
       this.mode = 'paused';
+      this.input.enabled = false;
       this.input.clear();
       this.ui.setState('paused');
       this.input.releaseLock();
@@ -295,9 +313,10 @@ export class Game {
   resume() {
     if (this.mode !== 'paused' || this.gpuLost) return;
     this.mode = 'playing';
+    this.input.enabled = true;
     this.ui.setState('playing');
     this.canvas.focus({ preventScroll: true });
-    this.input.requestLock();
+    if (this.platform === 'desktop') this.input.requestLock();
   }
 
   purchase(type) {
@@ -315,6 +334,7 @@ export class Game {
       this.ui.notify(type === 'municipal' ? 'Apoio aéreo da prefeitura a caminho!' : 'Apoio aéreo estadual mobilizado!');
     }
     this.coins -= cost;
+    if (this.platform === 'mobile') this.ui.closeShop();
     this.refreshHUD();
   }
 
@@ -325,7 +345,9 @@ export class Game {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     // A bounded framebuffer is more important than high DPR for integrated GPUs.
-    const scale = Math.min(.8, Math.sqrt(560000 / (width * height))) * this.renderScale;
+    const budget = this.platform === 'mobile' ? 300000 : 560000;
+    const maxScale = this.platform === 'mobile' ? .72 : .8;
+    const scale = Math.min(maxScale, Math.sqrt(budget / (width * height))) * this.renderScale;
     this.renderer.setPixelRatio(scale);
     this.renderer.setSize(width, height, false);
   }
@@ -350,6 +372,7 @@ export class Game {
   finish(result) {
     if (this.mode !== 'playing') return;
     this.mode = result;
+    this.input.enabled = false;
     this.input.clear();
     this.input.releaseLock();
     this.ui.setFinal(this.coins, this.wildlife.rescued, this.wildlife.lost, this.fires.fires.length);
@@ -411,7 +434,8 @@ export class Game {
   frame(time) {
     if (!this.active || !this.renderer) { this.loopStarted = false; return; }
     requestAnimationFrame(next => this.frame(next));
-    if (time - this.lastRenderTime < 1000 / RENDER_FPS) return;
+    const targetFPS = this.platform === 'mobile' ? 24 : RENDER_FPS;
+    if (time - this.lastRenderTime < 1000 / targetFPS) return;
     // Keep the menu/pause screen near static, saving GPU power while idle.
     if (this.mode !== 'playing' && time - (this.lastIdleFrame || 0) < 250) return;
     if (this.mode !== 'playing') this.lastIdleFrame = time;

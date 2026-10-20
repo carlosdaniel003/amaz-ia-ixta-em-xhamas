@@ -5,7 +5,7 @@ export class UI {
     this.elements = {
       device: $('device-screen'), mobileNotice: $('mobile-notice'), loading: $('loading-screen'), hud: $('hud'), progress: $('progress-wrap'),
       start: $('start-screen'), pause: $('pause-screen'), win: $('win-screen'), lost: $('lost-screen'),
-      tip: $('game-tip'), bottom: $('bottom-caption'),
+      tip: $('game-tip'), bottom: $('bottom-caption'), mobileControls: $('mobile-controls'), shopToggle: $('mobile-shop-toggle'), shop: $('support-shop'),
       count: $('fire-count'), coins: $('coin-count'), progressLabel: $('progress-label'), progressFill: $('progress-fill'),
       health: $('health-value'), healthFill: $('health-fill'), smoke: $('smoke-value'), smokeFill: $('smoke-fill'),
       saved: $('rescued-count'), lostAnimals: $('lost-count'), helpers: $('helper-count'),
@@ -25,27 +25,63 @@ export class UI {
     this.elements.hire.addEventListener('click', actions.hire);
     this.elements.municipal.addEventListener('click', actions.municipal);
     this.elements.state.addEventListener('click', actions.state);
+    this.elements.shopToggle.addEventListener('click', () => this.toggleShop());
+    $('mobile-shop-close').addEventListener('click', () => this.closeShop());
     this.toastTimer = null;
     this.state = 'device';
+    this.platform = 'desktop';
+    this.shopOpen = false;
     this.tutorialCompleted = false;
     this.renderState();
   }
 
-  setState(state) { this.state = state; this.renderState(); }
+  setPlatform(platform) {
+    this.platform = platform;
+    document.getElementById('app').dataset.inputMode = platform;
+    this.closeShop();
+    const instructions = $('tip-text');
+    instructions.textContent = platform === 'mobile'
+      ? 'Esquerda: mover. Arraste a tela para olhar. Segure ÁGUA para apagar o fogo.'
+      : 'Mova o mouse para olhar; WASD para andar. Esc libera o cursor. Clique na cena para recapturá-lo.';
+    $('start-button').querySelector('span').textContent = 'COMEÇAR MISSÃO';
+    this.renderState();
+  }
+  closeShop() {
+    this.shopOpen = false;
+    this.renderShop();
+  }
+  toggleShop() {
+    if (this.platform !== 'mobile' || this.state !== 'playing') return;
+    this.shopOpen = !this.shopOpen;
+    this.renderShop();
+  }
+  renderShop() {
+    const visible = this.state === 'playing' && (this.platform === 'desktop' || this.shopOpen);
+    this.elements.shop.hidden = !visible;
+    this.elements.shopToggle.setAttribute('aria-expanded', String(this.shopOpen));
+    this.elements.shopToggle.classList.toggle('is-open', this.shopOpen);
+  }
+  setState(state) {
+    this.state = state;
+    if (state !== 'playing') this.shopOpen = false;
+    this.renderState();
+  }
   renderState() {
     const e = this.elements;
     const playing = this.state === 'playing';
     e.device.hidden = this.state !== 'device';
     e.loading.hidden = this.state !== 'loading';
     $('crosshair').hidden = !playing;
-    e.mobileNotice.hidden = this.state !== 'mobile';
+    e.mobileNotice.hidden = true; // Both platforms now use the same mission screen.
     e.start.hidden = this.state !== 'start';
     e.pause.hidden = this.state !== 'paused';
     e.win.hidden = this.state !== 'won';
     e.lost.hidden = this.state !== 'lost';
     e.hud.hidden = ['device', 'mobile', 'start', 'loading'].includes(this.state);
     $('survival-hud').hidden = !playing && this.state !== 'paused';
-    $('support-shop').hidden = !playing;
+    e.mobileControls.hidden = !playing || this.platform !== 'mobile';
+    e.shopToggle.hidden = !playing || this.platform !== 'mobile';
+    this.renderShop();
     e.progress.hidden = !playing && this.state !== 'paused';
     e.tip.hidden = !playing || this.tutorialCompleted;
     e.bottom.hidden = this.state !== 'start' && this.state !== 'device';
@@ -94,6 +130,7 @@ export class UI {
   reset() {
     this.tutorialCompleted = false;
     this.elements.toast.classList.remove('visible');
+    this.closeShop();
     this.setProgress(12, 12, 0);
   }
 }
