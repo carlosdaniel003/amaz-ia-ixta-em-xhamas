@@ -1,5 +1,5 @@
 import { applyLookDelta } from './FirstPersonLogic.js';
-import { joystickVector, joystickOffset, touchLook } from './TouchLogic.js';
+import { joystickVector, joystickOffset, touchLook, shapedJoystick, smoothControl } from './TouchLogic.js';
 
 /** Mouse + keyboard and independent multi-touch joystick, camera and water controls. */
 export class Input {
@@ -15,6 +15,9 @@ export class Input {
     this.joystick = { x: 0, z: 0 };
     this.yaw = 0;
     this.pitch = 0;
+    this.targetYaw = 0;
+    this.targetPitch = 0;
+    this.smoothedMove = { x: 0, z: 0 };
     this.locked = false;
     this.canLook = true;
     this.stickPointerId = null;
@@ -33,6 +36,7 @@ export class Input {
     this.releaseLock();
     this.clear();
     this.platform = platform;
+    this.resetLook();
     this.canvas.style.touchAction = platform === 'mobile' ? 'none' : '';
   }
 
@@ -80,9 +84,14 @@ export class Input {
     this.canvas.addEventListener('pointermove', event => {
       if (!this.enabled || this.platform !== 'mobile' || event.pointerId !== this.lookPointerId) return;
       event.preventDefault();
-      const result = touchLook(this.yaw, this.pitch, event.clientX - this.lastLookX, event.clientY - this.lastLookY);
-      this.yaw = result.yaw;
-      this.pitch = result.pitch;
+      // Accumulate the raw gesture, but smooth only once per rendered frame.
+      // This avoids slow/double smoothing on high-touch-sampling phones.
+      const dx = Math.max(-75, Math.min(75, event.clientX - this.lastLookX));
+      const dy = Math.max(-75, Math.min(75, event.clientY - this.lastLookY));
+      const gain = 0.00325 * (1 + Math.min(.20, Math.max(0, Math.hypot(dx, dy) - 12) / 90));
+      const result = touchLook(this.targetYaw, this.targetPitch, dx, dy, gain);
+      this.targetYaw = result.yaw;
+      this.targetPitch = result.pitch;
       this.lastLookX = event.clientX;
       this.lastLookY = event.clientY;
     });
@@ -162,7 +171,32 @@ export class Input {
     if (document.pointerLockElement === this.canvas) document.exitPointerLock?.();
   }
 
-  resetLook() { this.yaw = 0; this.pitch = 0; }
+  resetLook() {
+    this.yaw = 0;
+    this.pitch = 0;
+    this.targetYaw = 0;
+    this.targetPitch = 0;
+    this.smoothedMove.x = 0;
+    this.smoothedMove.z = 0;
+  }
+
+  /** Called at render cadence. Smooths touch motion without new GPU work. */
+  step(delta) {
+    if (this.platform !== 'mobile' || !this.enabled) return;
+    const dt = Math.min(.08, Math.max(0, delta));
+    this.yaw = smoothControl(this.yaw, this.targetYaw, dt, 24);
+    this.pitch = smoothControl(this.pitch, this.targetPitch, dt, 24);
+  }
+
+  movement(delta) {
+    if (this.platform !== 'mobile') return this.move();
+    const desired = this.enabled ? shapedJoystick(this.joystick) : { x: 0, z: 0 };
+    const response = desired.x || desired.z ? 15 : 23;
+    const dt = Math.min(.08, Math.max(0, delta));
+    this.smoothedMove.x = smoothControl(this.smoothedMove.x, desired.x, dt, response);
+    this.smoothedMove.z = smoothControl(this.smoothedMove.z, desired.z, dt, response);
+    return this.smoothedMove;
+  }
 
   move() {
     if (!this.enabled) return { x: 0, z: 0 };
@@ -185,6 +219,10 @@ export class Input {
     this.sprayHeld = false;
     this.touchSprayHeld = false;
     this.joystick = { x: 0, z: 0 };
+    this.smoothedMove.x = 0;
+    this.smoothedMove.z = 0;
+    this.targetYaw = this.yaw;
+    this.targetPitch = this.pitch;
     this.stickPointerId = null;
     this.lookPointerId = null;
     this.sprayPointerId = null;

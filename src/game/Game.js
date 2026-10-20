@@ -12,6 +12,7 @@ import { Atmosphere } from './Atmosphere.js';
 import { DamageFeedback } from '../ui/DamageFeedback.js';
 import { worldMovement } from './FirstPersonLogic.js';
 import { findGraphicsContext } from './GraphicsSupport.js';
+import { findAimedFire } from './FireLogic.js';
 import { MAX_HEALTH, HIRE_COST, MUNICIPAL_COST, STATE_COST, MAX_HELPERS, exposureAt, isEncircled, advanceSurvival, extinguishReward, canBuy } from './SurvivalLogic.js';
 
 const MOVE_SPEED = 8.5;
@@ -391,7 +392,8 @@ export class Game {
   update(dt) {
     this.elapsed += dt;
     // WASD movement follows the heading, not the world axes.
-    const move = worldMovement(this.input.move(), this.input.yaw);
+    this.input.step(dt);
+    const move = worldMovement(this.input.movement(dt), this.input.yaw);
     const moving = Math.hypot(move.x, move.z) > .08;
     if (moving) {
       const nextX = this.player.position.x + move.x * MOVE_SPEED * dt;
@@ -407,9 +409,13 @@ export class Game {
     this.camera.getWorldDirection(this.aimDirection);
     this.camera.localToWorld(this.tempNozzle.set(.32, -.27, -.9));
 
+    const hit = findAimedFire(this.fires.fires, this.camera.position, this.aimDirection);
+    this.ui.setAimTarget(Boolean(hit));
     const spraying = this.input.spraying;
     if (spraying) this.awardExtinguished(this.fires.spray(this.camera.position, this.aimDirection, dt));
-    this.water.update(dt, spraying, this.tempNozzle, this.aimDirection);
+    // Visual jet terminates at the same aimed focus used by FireLogic.
+    this.water.update(dt, spraying, this.camera.position, this.tempNozzle,
+      this.aimDirection, hit?.distance ?? null);
     if (this.mode !== 'playing') return;
 
     this.awardExtinguished(this.helpers.update(dt, this.fires, this.world));

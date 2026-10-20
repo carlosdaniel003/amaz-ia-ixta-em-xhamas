@@ -86,6 +86,13 @@ export class UI {
     e.tip.hidden = !playing || this.tutorialCompleted;
     e.bottom.hidden = this.state !== 'start' && this.state !== 'device';
   }
+  setAimTarget(aimed) {
+    // DOM class changes only when the target state changes; no layout measurements.
+    if (this.aimed === aimed) return;
+    this.aimed = aimed;
+    document.getElementById('crosshair').classList.toggle('is-target', aimed);
+  }
+
   setProgress(remaining, total, coins) {
     const completed = total - remaining;
     const percentage = total ? Math.round(completed / total * 100) : 100;
@@ -129,6 +136,8 @@ export class UI {
   }
   reset() {
     this.tutorialCompleted = false;
+    this.aimed = null;
+    document.getElementById('crosshair').classList.remove('is-target');
     this.elements.toast.classList.remove('visible');
     this.closeShop();
     this.setProgress(12, 12, 0);

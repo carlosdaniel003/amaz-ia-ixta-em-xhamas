@@ -20,3 +20,17 @@ export function touchLook(yaw, pitch, deltaX, deltaY, sensitivity = 0.004) {
     pitch: Math.max(-1.10, Math.min(1.10, nextPitch)),
   };
 }
+
+/** Ignore microdrifts, but keep analog speed for fine positioning. */
+export function shapedJoystick(vector, deadZone = 0.075) {
+  const length = Math.min(1, Math.hypot(vector.x, vector.z));
+  if (length <= deadZone) return { x: 0, z: 0 };
+  const strength = Math.pow((length - deadZone) / (1 - deadZone), 1.1);
+  return { x: vector.x / length * strength, z: vector.z / length * strength };
+}
+
+/** Time-based smoothing, independent of phone refresh rate. */
+export function smoothControl(current, target, deltaSeconds, response = 14) {
+  const factor = 1 - Math.exp(-Math.max(0, deltaSeconds) * response);
+  return current + (target - current) * factor;
+}

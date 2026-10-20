@@ -104,3 +104,14 @@ Acesse o endereço publicado pelo GitHub Pages no navegador do Android (Chrome o
 O joystick movimenta o personagem em relação à câmera; arrastar o cenário controla a mira e é independente do joystick e do botão **ÁGUA**, permitindo os três simultaneamente. Os reforços ficam em um painel recolhível, com preços e disponibilidade atualizados pelas mesmas regras do computador. O jogo pausa ao alternar para outro aplicativo e mantém a tela de vida, fumaça, animais e moedas.
 
 **Requisitos:** o navegador do celular precisa permitir WebGL (preferencialmente WebGL2) e ter memória gráfica suficiente. O perfil móvel usa aproximadamente 75 árvores de grande porte, fumaça simplificada, sem sombras dinâmicas, 24 FPS e resolução reduzida. O desempenho real pode variar conforme aparelho e versão do navegador. Se WebGL estiver bloqueado no dispositivo, será exibido um diagnóstico sem travar silenciosamente a página.
+
+## Atualização: mira e controles móveis refinados
+
+- A movimentação no joystick usa uma pequena zona morta para filtrar tremores e mantém velocidade analógica (pressionar pouco = caminhar devagar). Aceleração e desaceleração são suavizadas com interpolação baseada no tempo, mantendo sensação semelhante a 24 ou 60 FPS.
+- A câmera do celular processa gestos separadamente da renderização: aplica rotação com sensibilidade progressiva, suaviza alterações rápidas e limita a inclinação vertical. Os três toques simultâneos (andar, olhar e disparar água) permanecem independentes.
+- **A mira central determina o dano.** Um foco acende o aviso **ALVO** na mira se estiver no alcance e direção da mangueira. Apenas o fogo mais próximo sob a mira recebe dano do jogador; apoiar com bombeiros e aviões continua independente.
+- O jato visual agora sai da mangueira e converge **em linha reta** ao mesmo ponto do raio usado para detectar o fogo. O alcance é limitado (12 unidades); se a mira apontar para o chão, a água para visualmente no chão. Foi removida a antiga trajetória balística decorativa, que caía longe da mira.
+- A água reutiliza 78 pontos no mesmo buffer, sem corpos físicos ou alocação de geometria por frame; mira colorida usa apenas CSS e alterna a classe quando há mudança no alvo.
+
+### Como mirar corretamente
+Arraste a região livre do lado direito para colocar a cruz central sobre o fogo. Ao aparecer **ALVO**, mantenha **ÁGUA** pressionado até o foco se apagar. O jogador também pode andar pelo joystick simultaneamente.

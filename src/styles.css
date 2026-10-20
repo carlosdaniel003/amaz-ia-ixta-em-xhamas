@@ -126,3 +126,12 @@
  #app[data-input-mode="mobile"] .touch-instructions{margin-top:8px;font-size:9px}
  #app[data-input-mode="mobile"] .screen-start .primary-button{min-height:45px}
 }
+
+/* Zero-cost HUD confirmation: the reticle responds only to the authoritative hit test. */
+.crosshair.is-target::before,.crosshair.is-target::after{background:#b6ffe2;box-shadow:0 0 5px #61ffd2a8}
+.crosshair-target-label{display:none;position:absolute;top:28px;left:50%;transform:translateX(-50%);color:#e6ffed;background:#17463bca;border:1px solid #baffd89f;border-radius:4px;padding:3px 6px;font-size:9px;letter-spacing:.12em;font-weight:700;white-space:nowrap}
+.crosshair.is-target .crosshair-target-label{display:block}
+#app[data-input-mode="mobile"] .crosshair{width:20px;height:20px}
+#app[data-input-mode="mobile"] .crosshair::before{width:17px}
+#app[data-input-mode="mobile"] .crosshair::after{height:17px}
+#app[data-input-mode="mobile"] .crosshair-target-label{top:24px;font-size:8px;padding:2px 5px}
