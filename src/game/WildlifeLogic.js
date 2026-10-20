@@ -52,3 +52,37 @@ export function roamDirection(position, elapsed, phase, homeX, homeZ) {
   const length=Math.max(.001,Math.hypot(dx,dz));
   return {x:dx/length,z:dz/length};
 }
+
+
+/**
+ * Stratified locations cover the entire playable map instead of gathering
+ * wildlife around the initial player position (0, 10). 6 x 5 cells, one
+ * animal per cell; deterministic offsets keep the scene varied.
+ */
+export function wildlifeSpawnPoints(count, canOccupy = () => true) {
+  const result = [];
+  const totalCells = 30;
+  const used = new Set();
+  for (let i = 0; i < Math.min(count, totalCells); i++) {
+    const cell = (i * 13 + 7) % totalCells; // 13 and 30 are coprime.
+    const col = cell % 6;
+    const row = Math.floor(cell / 6);
+    const cx = -32 + col * 12.8;
+    const cz = -31 + row * 15.5;
+    const shifts = [
+      [Math.sin(i * 5.31) * 2, Math.cos(i * 4.07) * 2],
+      [-3.2, 2.4], [2.8, -2.5], [-1.3, -3.1], [0, 0],
+    ];
+    let position = { x: cx, z: cz };
+    for (const [sx, sz] of shifts) {
+      const candidate = {x: cx + sx, z: cz + sz};
+      if (canOccupy(candidate.x, candidate.z)) {
+        position = candidate;
+        break;
+      }
+    }
+    used.add(cell);
+    result.push(position);
+  }
+  return result;
+}

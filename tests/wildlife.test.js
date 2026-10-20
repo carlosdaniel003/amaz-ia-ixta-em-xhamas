@@ -23,7 +23,7 @@ test('escape direction remains finite when an animal starts on a fire',()=>{
   assert.ok(Number.isFinite(direction.x) && Number.isFinite(direction.z));
 });
 
-test('species textures and sizes are bounded for lightweight mobile sprites',()=>{
+test('species sizes are bounded for lightweight mobile 3D models',()=>{
   assert.ok(SPECIES.every(s=>s.scale>=1 && s.scale<=2.1));
   assert.equal(SPECIES.filter(s=>s.flying).length,3);
 });

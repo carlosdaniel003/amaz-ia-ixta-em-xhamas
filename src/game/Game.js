@@ -152,7 +152,7 @@ export class Game {
     await this.nextLoadStage('Preparando bombeiros, aeronaves e animais...');
     this.helpers = new Helpers(this.scene);
     this.support = new AirSupport(this.scene);
-    this.wildlife = new Wildlife(this.scene, { mobile: this.platform === 'mobile' });
+    this.wildlife = new Wildlife(this.scene, { mobile: this.platform === 'mobile', world: this.world });
     await this.nextLoadStage('Configurando fumaça e finalizando a missão...');
     this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true, mobile: this.platform === 'mobile' });
     this.denseSmoke = new DenseSmoke(this.scene, { mobile: this.platform === 'mobile' });

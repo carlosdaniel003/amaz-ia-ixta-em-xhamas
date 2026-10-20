@@ -158,3 +158,12 @@ A nova camada usa a mesma textura de fumaça já carregada, apenas **um objeto `
 - **Incêndios nas árvores podem ser apagados:** cada árvore com chama é vinculada a um foco de incêndio próximo. Tanto a chama baixa do tronco quanto a superior podem ser atingidas pela mira central se estiverem dentro do alcance da mangueira (12 unidades). O jato curvo termina no ponto mirado, causa dano ao foco real, concede a recompensa usual e remove as chamas da árvore quando o foco deixa de alimentá-las. Não há novo sistema de dano paralelo ou mais partículas.
 - **Folhas junto ao chão:** os grupos de samambaias foram rebaixados e achatados para não parecerem folhas suspensas; mantêm instancing e não introduzem objetos adicionais.
 - **Desempenho:** continuam as quantidades anteriores de animais, árvores, chamas e FPS por plataforma. A seleção de árvores em chamas prioriza árvores perto do bombeiro para aproveitar o limite de 12 conjuntos no celular e 22 no computador.
+
+
+## Fauna amazônica distribuída em modelos 3D (revisão)
+
+A fauna **não utiliza mais sprites, imagens planas ou billboards**. Todos os animais são modelos 3D low-poly criados proceduralmente a partir de geometrias simples (corpo, patas, cabeça, cauda e bico conforme a espécie). As 14 espécies conservam cores e proporções próprias. Cada espécie compartilha **uma única geometria 3D** com seus exemplares; os pássaros possuem duas asas 3D articuladas, sem esqueletos ou texturas externas.
+
+Os **22 animais mobile** ou **28 desktop** nascem em células amplamente distribuídas por todos os quadrantes da floresta, não em um bloco perto da posição inicial. As posições são determinísticas, separadas e ajustadas em torno de obstáculos. A fauna terrestre anda pelo chão e evita troncos; aves voam e batem as asas, com movimento contínuo de translação e retorno ao território. Os estados de fuga, resgate, morte por fogo/fumaça e desaparecimento ao sair da área permanecem ativos.
+
+**Custo gráfico:** aproximadamente um mesh por animal, acrescido de dois meshes de asa para cada ave, sem animação esquelética, pós-processamento, luzes próprias ou simulação física. Não há aumento na quantidade de animais. A mudança substitui integralmente a representação anterior em 2.5D.
