@@ -37,3 +37,14 @@
 .loading-screen{z-index:15;background:rgba(7,22,20,.94);backdrop-filter:none}
 .loading-screen h2{font-size:clamp(42px,6vw,76px)}
 #game-canvas{cursor:crosshair}
+
+/* Compatibility profile: eliminate large animated GPU-composited layers. */
+.heat-haze{animation:none!important;will-change:auto!important}
+.device-screen,.device-panel,.mission-card,.hud,.support-shop,.survival-hud,.screen-modal,.game-tip{backdrop-filter:none!important}
+.graphics-error-panel{width:min(700px,100%);text-align:left;background:#142c27;border:1px solid #bdd8af4d;border-radius:12px;padding:clamp(18px,3vw,36px);box-shadow:0 18px 60px #0008}
+.graphics-error-panel h2{font-size:clamp(25px,3vw,38px);line-height:1.16;margin:0 0 16px;letter-spacing:-.035em}
+.graphics-error-panel p{font-size:14px;line-height:1.6;color:#ebf3e5c9;margin:0 0 18px}
+.graphics-error-panel pre{font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:31vh;overflow:auto;background:#091c19;padding:16px;border:1px solid #c5e2aa36;border-radius:6px;color:#e3f7d0;text-align:left}
+.graphics-error-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.graphics-error-actions button{border:1px solid #aacf9f7c;border-radius:5px;padding:12px 15px;background:#d3f4ab;color:#193b2e;font-size:11px;font-weight:700;letter-spacing:.05em}
+.graphics-error-actions button+button{background:transparent;color:#d8f6bf}

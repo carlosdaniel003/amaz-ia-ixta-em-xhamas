@@ -6,5 +6,5 @@ try {
   console.error('Falha ao iniciar o jogo:', error);
   const banner = document.getElementById('fatal-error');
   banner.hidden = false;
-  banner.textContent = 'Não foi possível iniciar o jogo 3D. Verifique sua conexão com a internet e se o navegador oferece suporte a WebGL. Depois, recarregue a página.';
+  banner.textContent = `Erro ao carregar os módulos do jogo: ${error?.message || String(error)}. Verifique o console (F12) para detalhes.`;
 }

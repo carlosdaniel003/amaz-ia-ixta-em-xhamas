@@ -56,7 +56,11 @@ Com Node.js 22+ instalado, execute `npm test` (não requer `npm install`). Os te
 
 A câmera fica à altura dos olhos e acompanha a rotação do mouse via Pointer Lock. A mangueira permanece visível na parte inferior da tela. WASD movimenta o personagem em relação à orientação atual; a mira fica fixa no centro. Esc libera o cursor e pausa, e clicar na cena retoma a captura.
 
-A página de escolha de dispositivo carrega sem criar WebGL ou objetos 3D. A floresta só é instanciada ao iniciar a missão, com uma tela de carregamento. A renderização utiliza resolução interna limitada e limite de quadros por segundo. Caso o navegador perca e consiga restaurar o contexto gráfico, o jogo permanece pausado e tenta se recuperar com qualidade reduzida; falhas permanentes ainda podem depender do driver, navegador ou hardware.
+A página de escolha de dispositivo carrega sem criar WebGL ou objetos 3D. Ao iniciar, o programa verifica WebGL2 e monta o cenário progressivamente entre frames, com mensagens na tela. O modo inicial de compatibilidade prioriza uma floresta menos pesada (aproximadamente 105 árvores de grande porte), 18 partículas de fumaça, resolução interna limitada a cerca de 560 mil pixels, renderização a 30 FPS e sem grandes animações CSS. Caso o navegador perca e consiga restaurar o contexto gráfico, o jogo permanece pausado e tenta se recuperar com qualidade reduzida. Se houver um erro de JavaScript ou de WebGL, a tela mostra a etapa e a mensagem técnica, com botão para copiar o diagnóstico. Não atribua uma falha de inicialização à GPU sem consultar o erro real; WebGL2 precisa estar habilitado no navegador.
+
+## Diagnóstico de falha gráfica
+
+Se o jogo ainda apresentar falha após clicar em **Começar missão**, use **Copiar diagnóstico** na tela do próprio jogo e envie o texto para análise. A seção mostra a etapa em que ocorreu o erro, a mensagem retornada pelo navegador, a disponibilidade do WebGL2 e se ocorreu `webglcontextlost`. Se WebGL2 estiver indisponível, verifique a aceleração gráfica nas configurações do navegador e seu relatório em `chrome://gpu` ou `edge://gpu`. O jogo depende de WebGL2 por utilizar Three.js 0.180.0. Uma GPU sem suporte ou um driver bloqueado não pode ser corrigido apenas no código do jogo.
 
 ## Decisões de desempenho
 

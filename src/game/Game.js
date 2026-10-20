@@ -15,7 +15,7 @@ import { MAX_HEALTH, HIRE_COST, MUNICIPAL_COST, STATE_COST, MAX_HELPERS, exposur
 
 const MOVE_SPEED = 8.5;
 const EYE_HEIGHT = 1.85;
-const RENDER_FPS = 36;
+const RENDER_FPS = 30; // Conservative default for integrated GPUs.
 
 export class Game {
   constructor(canvas) {
@@ -27,6 +27,8 @@ export class Game {
     this.world = null;
     this.active = false;
     this.gpuLost = false;
+    this.startupStage = 'Aguardando início';
+    this.diagnostics = {};
     this.loopStarted = false;
     this.renderScale = 1;
     this.lastRenderTime = 0;
@@ -39,7 +41,7 @@ export class Game {
     this.coins = 0;
     this.elapsed = 0;
     this.previousTime = 0;
-    this.active = true;
+    this.active = false;
     this.healthState = { health: MAX_HEALTH, smoke: 0, safeTime: 0 };
     this.lastExtinguishedAt = -100;
     this.combo = 0;
@@ -60,12 +62,14 @@ export class Game {
     });
     canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault();
+      this.startupStage = 'Contexto WebGL perdido durante ' + this.startupStage;
       this.gpuLost = true;
       this.active = false;
       this.loopStarted = false;
       if (this.mode === 'playing') this.togglePause();
       this.input.releaseLock();
-      this.ui.notify('Vídeo interrompido. Aguardando recuperação automática do navegador.');
+      this.ui.notify('A GPU interrompeu a renderização. Aguardando recuperação.');
+      if (this.mode === 'loading') this.showFatal(new Error('O navegador perdeu o contexto WebGL durante a inicialização.'));
     });
     canvas.addEventListener('webglcontextrestored', () => {
       if (!this.renderer) return;
@@ -83,15 +87,30 @@ export class Game {
     });
   }
 
-  /** Create WebGL only after the player has explicitly started a mission. */
-  initializeGraphics() {
+  /** Allow the browser to paint the loading UI between expensive stages. */
+  async nextLoadStage(message) {
+    this.startupStage = message;
+    const element = document.getElementById('loading-message');
+    if (element) element.textContent = message;
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (this.gpuLost) throw new Error('O contexto WebGL foi perdido durante o carregamento.');
+  }
+
+  /** Test WebGL2 on the game canvas before allocating all the geometry. */
+  createRenderer() {
+    const gl = this.canvas.getContext('webgl2', {
+      alpha: false, antialias: false, stencil: false, depth: true,
+      powerPreference: 'low-power', preserveDrawingBuffer: false,
+    });
+    if (!gl) {
+      throw new Error('WebGL2 indisponível neste navegador. A aplicação não conseguiu obter um contexto gráfico.');
+    }
+    this.diagnostics.webgl = String(gl.getParameter(gl.VERSION) || 'WebGL2');
+    this.diagnostics.maxTextureSize = String(gl.getParameter(gl.MAX_TEXTURE_SIZE) || 'desconhecido');
+
     this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: false,
-      alpha: false,
-      stencil: false,
-      powerPreference: 'default',
-      preserveDrawingBuffer: false,
+      canvas: this.canvas, context: gl, antialias: false,
+      alpha: false, stencil: false, powerPreference: 'low-power',
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -99,26 +118,36 @@ export class Game {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x504940);
     this.scene.fog = new THREE.FogExp2(0x504940, .035);
-    this.scene.add(new THREE.HemisphereLight(0xb9b6a0, 0x1c2920, 1.55));
-    const sun = new THREE.DirectionalLight(0xf1ad7c, 1.05);
+    this.scene.add(new THREE.HemisphereLight(0xb9b6a0, 0x1c2920, 1.4));
+    const sun = new THREE.DirectionalLight(0xf1ad7c, .85);
     sun.position.set(-14, 27, 10);
     this.scene.add(sun);
-
     this.camera = new THREE.PerspectiveCamera(75, 1, .08, 115);
     this.camera.rotation.order = 'YXZ';
     this.scene.add(this.camera);
     this.createFirstPersonHose();
+    this.resize();
+  }
 
-    this.world = new World(this.scene);
+  /** Build the world over multiple paints instead of blocking the tab in one callback. */
+  async initializeGraphics() {
+    if (this.renderer && this.world && this.atmosphere) return;
+    await this.nextLoadStage('Verificando WebGL2 e preparando a câmera...');
+    this.createRenderer();
+    await this.nextLoadStage('Construindo árvores e caminhos da floresta...');
+    this.world = new World(this.scene, { lowPerformance: true });
+    await this.nextLoadStage('Preparando personagem, focos e mangueira...');
     this.player = new Player(this.scene);
-    this.player.root.visible = false; // Camera is inside the character; avoid seeing the head.
+    this.player.root.visible = false;
     this.fires = new FireSystem(this.scene);
     this.water = new WaterSystem(this.scene);
+    await this.nextLoadStage('Preparando bombeiros, aeronaves e animais...');
     this.helpers = new Helpers(this.scene);
     this.support = new AirSupport(this.scene);
     this.wildlife = new Wildlife(this.scene);
-    this.atmosphere = new Atmosphere(this.scene);
-    this.resize();
+    await this.nextLoadStage('Configurando fumaça e finalizando a missão...');
+    this.atmosphere = new Atmosphere(this.scene, { lowPerformance: true });
+    await this.nextLoadStage('Entrando na floresta...');
   }
 
   /** Small camera-attached hose, rendered as geometry rather than a heavy model. */
@@ -149,11 +178,54 @@ export class Game {
   }
 
   showFatal(error) {
-    console.error('Falha no WebGL:', error);
+    console.error('Falha na etapa: ' + this.startupStage, error);
     this.active = false;
+    this.loopStarted = false;
+    this.input.clear();
     this.input.releaseLock();
+    this.mode = 'error';
+    this.startupError = error;
+    this.ui.setState('error');
+
+    const message = error instanceof Error ? error.message : String(error);
+    const diagnostics = [
+      'Etapa: ' + this.startupStage,
+      'Erro: ' + message,
+      'WebGL: ' + (this.diagnostics.webgl || 'não inicializado'),
+      'Tamanho máximo de textura: ' + (this.diagnostics.maxTextureSize || 'não verificado'),
+      'Contexto perdido: ' + (this.gpuLost ? 'sim' : 'não'),
+      'Navegador: ' + navigator.userAgent,
+    ].join('\n');
+
     const banner = document.getElementById('fatal-error');
-    banner.textContent = 'Não foi possível iniciar os gráficos 3D. Verifique o suporte a WebGL e os drivers de vídeo do navegador. Tente atualizar a página ou outro navegador.';
+    banner.replaceChildren();
+    const panel = document.createElement('div');
+    panel.className = 'graphics-error-panel';
+    const title = document.createElement('h2');
+    title.textContent = 'Não foi possível iniciar os gráficos 3D';
+    const details = document.createElement('p');
+    details.textContent = this.gpuLost
+      ? 'O navegador perdeu a conexão com a GPU. O jogo foi interrompido para evitar novos travamentos.'
+      : 'Uma etapa da inicialização falhou. O erro técnico está indicado abaixo — isso não significa necessariamente que a placa de vídeo esteja com defeito.';
+    const code = document.createElement('pre');
+    code.textContent = diagnostics;
+    const actions = document.createElement('div');
+    actions.className = 'graphics-error-actions';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = 'RECARREGAR JOGO';
+    retry.addEventListener('click', () => window.location.reload());
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.textContent = 'COPIAR DIAGNÓSTICO';
+    copy.addEventListener('click', () => {
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(diagnostics).then(() => { copy.textContent = 'DIAGNÓSTICO COPIADO'; }).catch(() => { copy.textContent = 'SELECIONE E COPIE O TEXTO ACIMA'; });
+      } else copy.textContent = 'SELECIONE E COPIE O TEXTO ACIMA';
+    });
+    actions.append(retry, copy);
+    panel.append(title, details, code, actions);
+    banner.append(panel);
     banner.hidden = false;
   }
 
@@ -161,23 +233,19 @@ export class Game {
   chooseMobile() { this.mode = 'mobile'; this.ui.setState('mobile'); }
   chooseDevice() { this.mode = 'device'; this.ui.setState('device'); }
 
-  start() {
+  async start() {
     if (this.mode === 'loading') return;
     this.mode = 'loading';
     this.ui.setState('loading');
     this.input.clear();
     this.input.resetLook();
-    // Request lock in the actual click gesture. Canvas click is also a fallback.
-    this.input.requestLock();
-    // Yield a paint so the loading overlay appears BEFORE the expensive scene is built.
-    window.setTimeout(() => {
-      try {
-        if (!this.renderer) this.initializeGraphics();
-        this.beginSession();
-      } catch (error) {
-        this.showFatal(error);
-      }
-    }, 60);
+    try {
+      await this.initializeGraphics();
+      if (this.gpuLost) throw new Error('O navegador perdeu o contexto WebGL.');
+      this.beginSession();
+    } catch (error) {
+      this.showFatal(error);
+    }
   }
 
   beginSession() {
@@ -253,7 +321,7 @@ export class Game {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     // A bounded framebuffer is more important than high DPR for integrated GPUs.
-    const scale = Math.min(1, Math.sqrt(1100000 / (width * height))) * this.renderScale;
+    const scale = Math.min(.8, Math.sqrt(560000 / (width * height))) * this.renderScale;
     this.renderer.setPixelRatio(scale);
     this.renderer.setSize(width, height, false);
   }
